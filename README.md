@@ -49,7 +49,7 @@ through all three modes straight from the browser's print pipeline:
 | --- | --- | --- |
 | [`sample-light.pdf`](assets/sample-light.pdf) | 1 · light, colourful | The default look, 42 pages |
 | [`sample-dark.pdf`](assets/sample-dark.pdf) | 2 · dark | The same document on navy paper, 38 pages |
-| [`sample-print.pdf`](assets/sample-print.pdf) | 3 · printable | Black and grey ink and nothing else, 42 pages |
+| [`sample-print.pdf`](assets/sample-print.pdf) | 3 · printable | Black and grey ink throughout, 42 pages |
 
 Every exported document is the **full transcript** — every prompt and every
 answer, in order. A turn can only be left out because you unticked it.

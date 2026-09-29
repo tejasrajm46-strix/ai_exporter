@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Java Exceptions - ChatGPT</title>
+    <link rel="stylesheet" href="popup/popup.css">
+    <style>
+      body { width: auto; padding: 24px; font-size: 14px; }
+      .sprite { display: none; }
+      #fixture { display: none; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .summary { margin: 0 0 16px; font-weight: 600; }
+      .summary.pass { color: #047857; }
+      .summary.fail { color: #b42318; }
+      ol { padding-left: 22px; }
+      li { margin-bottom: 5px; line-height: 1.45; }
+      .ok { color: #047857; font-weight: 700; }
+      .bad { color: #b42318; font-weight: 700; }
+      pre { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>AI Exporter self-check</h1>
+      <p class="summary" id="summary">Running...</p>
+      <ol id="results"></ol>
+    </main>
+
+    <!--
+      Fixture copied from a live ChatGPT conversation (Sept 2026), with the
+      prose replaced. Real structure that matters here:
+        - a turn is <section data-testid="conversation-turn-N">
+        - the role attribute lives on a descendant div
+        - assistant body is div.<hash>_content.markdown.prose
+        - a code block is <pre> whose code lives inside an inline CodeMirror
+          viewer (nested <pre class="cm-content"><code>), and the language label
+          ("Java") sits inside the <pre>, before the code
+        - tables are wrapped in div.TyagGW_tableContainer
+    -->
+    <div id="fixture">
+      <section data-testid="conversation-turn-1" class="text-token-text-primary w-full focus:outline-none">
+        <div class="text-base my-auto mx-auto">
+          <div class="flex max-w-full flex-col">
+            <div class="min-h-8 text-message relative">
+              <div class="flex w-full flex-col">
+                <div data-message-author-role="user" data-message-id="u-1" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words">
+                  <div class="flex w-full flex-col gap-1 empty:hidden items-end rtl:items-start">
+                    <div class="flex w-[var(--user-chat-width,70%)] flex-col items-end">
+                      <div class="whitespace-pre-wrap">Explain Java exceptions with examples.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section data-testid="conversation-turn-2" class="text-token-text-primary w-full focus:outline-none">
+        <div class="text-base my-auto mx-auto">
+          <div class="flex max-w-full flex-col">
+            <div class="min-h-8 text-message relative">
+              <div class="flex w-full flex-col">
+                <div data-message-author-role="assistant" data-message-id="a-1" class="min-h-8 text-message relative flex w-full flex-col">
+                  <div class="flex w-full flex-col">
+                    <div class="LR5Y_W_content markdown prose">
+                      <h2>Exception Types</h2>
+                      <p>Java groups exceptions as <strong>checked</strong> and unchecked, for example <code>NumberFormatException</code>.</p>
+                      <p>&lt;b&gt;not html&lt;/b&gt; must be escaped, never executed.</p>
+                      <blockquote>An exception is an event that disrupts the normal flow of a program.</blockquote>
+                      <h3>Checked vs unchecked</h3>
+                      <ul>
+                        <li>Prevents abnormal termination of the program.</li>
+                        <li>Provides meaningful error messages.</li>
+                      </ul>
+                      <hr>
+                      <pre class="overflow-visible! px-0!" data-start="1972" data-end="2077"><div class="relative w-full mt-4 mb-1"><div class="select-none sticky z-2"><div class="flex w-full items-center justify-between py-1.5 ps-4 pe-1.5 font-sans"><div class="flex max-w-[75%] min-w-0 cursor-default items-center text-sm font-medium justify-self-start text-token-text-primary"><svg viewBox="0 0 24 24"></svg>Java</div><div class="flex flex-row items-center gap-0.5 justify-self-end"><button type="button" aria-label="Copy" class="flex gap-1 items-center select-none py-2 text-sm font-medium"></button></div></div></div><div class="relative z-0 flex max-w-full"><div dir="ltr" class="q9tKkq_viewer cm-editor z-10 light:cm-light dark:cm-light flex h-full w-full flex-col items-stretch"><div class="cm-scroller"><pre class="cm-content q9tKkq_readonly m-0"><code><span class="v">class</span><span> </span><span class="n">Student</span><span> {
+    </span><span class="v">private</span><span> </span><span class="n">int</span><span> </span><span class="n">marks</span><span>;
+}</span></code></pre></div></div></div></div></pre>
+                      <div dir="auto" class="group TyagGW_tableContainer">
+                        <div class="TyagGW_tableWrapper flex flex-col-reverse w-fit">
+                          <table dir="auto" class="w-fit min-w-(--thread-content-width)">
+                            <thead>
+                              <tr><th class="last:pe-10">Exception</th><th class="last:pe-10">When it is thrown</th></tr>
+                            </thead>
+                            <tbody>
+                              <tr><td class="last:pe-10">NumberFormatException</td><td class="last:pe-10">a string is not a number</td></tr>
+                              <tr><td class="last:pe-10">NullPointerException</td><td class="last:pe-10">a null reference is used</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <p>Output:</p>
+                      <pre class="overflow-visible! px-0!"><div class="relative w-full mt-4 mb-1"><div class="relative"><div class="q9tKkq_viewer cm-editor z-10"><div class="cm-scroller"><pre class="cm-content q9tKkq_readonly m-0"><code>Invalid array index</code></pre></div></div></div></div></pre>
+                      <p>Formula: <span class="katex"><annotation encoding="application/x-tex">a^2 + b^2 = c^2</annotation><span class="katex-html">a2+b2=c2</span></span></p>
+                      <div class="katex-display"><span class="katex"><annotation encoding="application/x-tex">\int_0^1 x^2 dx</annotation><span class="katex-html">int</span></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section data-testid="conversation-turn-3" class="text-token-text-primary w-full focus:outline-none">
+        <div class="text-base my-auto mx-auto">
+          <div class="flex max-w-full flex-col">
+            <div class="min-h-8 text-message relative">
+              <div class="flex w-full flex-col">
+                <div data-message-author-role="assistant" data-message-id="a-2" class="min-h-8 text-message relative flex w-full flex-col">
+                  <div class="flex w-full flex-col">
+                    <div class="LR5Y_W_content markdown prose">
+                      <h2>Key Takeaways</h2>
+                      <ul>
+                        <li>There are two types: built-in and user-defined exceptions.</li>
+                        <li>Proper exception handling leads to maintainable code.</li>
+                      </ul>
+                      <h2>Next Steps</h2>
+                      <ul>
+                        <li>Practice more example programs.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></symbol>
+    </svg>
+
+    <script src="utils/parser.js"></script>
+    <script src="utils/exporter.js"></script>
+    <script>
+      (async () => {
+        const parser = globalThis.AIExporterParser;
+        const exporter = globalThis.AIExporter;
+        const results = [];
+
+        const check = (name, pass, detail) => {
+          results.push({ name, pass: Boolean(pass), detail: detail === undefined ? "" : String(detail) });
+        };
+
+        const entries = parser.findMessages(document, location);
+        const chat = parser.parsePage(document, location);
+        const assistant = chat.messages[1] || { blocks: [], codeBlocks: [] };
+        const types = assistant.blocks.map((block) => block.type);
+        const codes = assistant.blocks.filter((block) => block.type === "code");
+        const tables = assistant.blocks.filter((block) => block.type === "table");
+        const formula = assistant.blocks.find((block) => block.type === "formula") || {};
+        const options = { theme: "light", timestamps: false, highlight: true };
+
+        check("three turns detected from section[data-testid]", entries.length === 3, `found ${entries.length}`);
+        check("roles read from the descendant attribute",
+          chat.messages.map((m) => m.role).join(",") === "user,assistant,assistant",
+          chat.messages.map((m) => m.role).join(","));
+        check("ids come from data-message-id", assistant.id === "a-1", assistant.id);
+        check("title cleaned from document.title", chat.title === "Java Exceptions", chat.title);
+        check("user turn text extracted",
+          (chat.messages[0].text || "").includes("Explain Java exceptions"), (chat.messages[0].text || "").slice(0, 40));
+        check("assistant text does not leak the code language label",
+          !assistant.blocks.some((block) => block.type === "paragraph" && block.text.trim() === "Java"));
+
+        check("headings extracted at their real levels",
+          assistant.blocks.some((b) => b.type === "heading" && b.level === 2) &&
+          assistant.blocks.some((b) => b.type === "heading" && b.level === 3));
+        check("blockquote becomes a quote", types.includes("quote"), types.join(","));
+        check("list extracted with two items",
+          assistant.blocks.some((b) => b.type === "list" && b.items.length === 2));
+        check("hr becomes a divider", types.includes("divider"), types.join(","));
+
+        check("nested CodeMirror <pre> does not duplicate the code block", codes.length === 2, `${codes.length} code blocks`);
+        check("language label inside the <pre> is detected", codes[0] && codes[0].language === "java",
+          codes[0] ? codes[0].language : "no code block");
+        check("code body comes from the CodeMirror <code>, not the chrome",
+          codes[0] && codes[0].code.includes("class Student") && !codes[0].code.includes("Copy"),
+          codes[0] ? codes[0].code.replace(/\s+/g, " ").slice(0, 60) : "");
+        check("a code block with no label falls back to text",
+          codes[1] && codes[1].language === "text", codes[1] ? codes[1].language : "missing");
+        check("inline code stays inline in the paragraph",
+          assistant.blocks.some((b) => b.type === "paragraph" && b.text.includes("`NumberFormatException`")));
+        check("bold survives as a marker",
+          assistant.blocks.some((b) => b.type === "paragraph" && b.text.includes("**checked**")));
+        check("table wrapper is unwrapped and thead is used",
+          tables.length === 1 && tables[0].head.length === 2 && tables[0].rows.length === 2,
+          tables.length ? JSON.stringify([tables[0].head.length, tables[0].rows.length]) : "no table");
+        check("inline LaTeX is kept as a TeX marker",
+          assistant.blocks.some((b) => b.type === "paragraph" && /\$a\^2 \+ b\^2 = c\^2\$/.test(b.text || "")));
+        check("display LaTeX becomes a formula block", formula.tex === "\\int_0^1 x^2 dx", formula.tex);
+        check("sample output paragraph sits before its code block",
+          assistant.blocks.some((b, i) => b.type === "paragraph" && b.text.trim() === "Output:" && assistant.blocks[i + 1] && assistant.blocks[i + 1].type === "code"));
+
+        const sections = exporter.sectionsFor(chat);
+        check("one section per turn, in order", sections.length === 3, `${sections.length} sections`);
+        check("every section keeps its role",
+          sections.map((section) => section.role).join(",") === "user,assistant,assistant",
+          sections.map((section) => section.role).join(","));
+        check("headings inside a turn are demoted to sub-headings",
+          sections[1].blocks.some((block) => block.type === "subheading"),
+          JSON.stringify(sections[1].blocks.map((block) => block.type)));
+
+        const markdown = exporter.markdownFor(chat, options);
+        check("markdown nests the h2 one level down", markdown.includes("### Exception Types"));
+        check("markdown fences java code", markdown.includes("```java"));
+        check("markdown keeps the table as GFM", markdown.includes("| Exception | When it is thrown |"));
+        check("markdown always keeps the user prompt", markdown.includes("## User") && markdown.includes("Explain Java exceptions"));
+        check("markdown always keeps the assistant turns", markdown.match(/## Assistant/g).length === 2);
+
+        const text = exporter.textFor(chat, options);
+        check("text export keeps the code body", text.includes("class Student"));
+
+        let jsonOk = false;
+        try {
+          jsonOk = JSON.parse(exporter.jsonFor(chat, options)).messages.length === chat.messages.length;
+        } catch {
+          jsonOk = false;
+        }
+        check("json export round-trips", jsonOk);
+
+        const doc = exporter.documentHtml(chat, options);
+        check("document has a cover page", doc.includes('class="sheet cover"') && doc.includes("Java Exceptions"));
+        check("document carries no AI Exporter header", !doc.includes("AI Exporter") && !doc.includes("run-head"));
+        check("document renders every turn as a transcript",
+          (doc.match(/class="turn turn--/g) || []).length === 3, `${(doc.match(/class="turn turn--/g) || []).length} turns`);
+        check("document keeps the user turn in the flow", doc.includes("turn--user") && doc.includes("Explain Java exceptions"));
+        check("document labels the code panel with the detected language", doc.includes('class="code-lang">Java<'));
+        check("output paragraph and code merge into one output panel",
+          /<figure class="code code--output">/.test(doc) && doc.includes('class="code-lang">Output<') && !doc.includes("<p>Output:</p>"));
+        check("document escapes markup from the page",
+          doc.includes("&lt;b&gt;not html&lt;/b&gt;") && !doc.includes("<b>not html</b>"));
+        check("document renders inline and display TeX",
+          doc.includes('class="tex"') && doc.includes("\\int_0^1 x^2 dx"));
+        check("takeaway heading opens a ticked summary card",
+          doc.includes('class="card card--summary"') && doc.includes('class="tick"') && doc.includes('class="list list--checks"'));
+        check("next-steps heading opens the next-steps card", doc.includes('class="card card--next"'));
+        check("document highlights code when asked", doc.includes('class="tok-kw"'));
+        check("highlighting can be turned off",
+          !exporter.documentHtml(chat, { ...options, highlight: false }).includes('class="tok-kw"'));
+        check("dark theme sets the theme attribute",
+          exporter.documentHtml(chat, { ...options, theme: "dark" }).includes('<html lang="en" data-theme="dark">'));
+        check("dark theme keeps its dark code panels",
+          exporter.documentHtml(chat, { ...options, theme: "dark" }).includes("--code-bg: #0d0208"));
+        const lightCss = doc.slice(doc.indexOf('html[data-theme="light"]'), doc.indexOf('html[data-theme="dark"]'));
+        check("light theme puts code on paper, not on a dark panel",
+          lightCss.includes("--code-bg: #f8fafc") && !lightCss.includes("#1e293b") && !lightCss.includes("#0f172a"),
+          lightCss.slice(lightCss.indexOf("--code-bg"), lightCss.indexOf("--code-bg") + 90));
+        check("light theme colours the code tokens for paper",
+          lightCss.includes("--tok-kw: #7c3aed") && !lightCss.includes("#c792ea"));
+        check("print gets real page margins from @page, not from the sheet box",
+          doc.includes("@page { size: A4 portrait; margin: 15mm 14mm; }") &&
+          doc.includes(".sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }"));
+        check("print keeps headings with what they introduce",
+          doc.includes(".sub, .turn-head, h1, h2, h3 { break-after: avoid;"));
+        check("no fake page numbers or table of contents", !doc.includes("sheet-foot") && !doc.includes("toc-page"));
+        check("code text can never inherit an inline-code background",
+          doc.includes(".code pre code { padding: 0; background: transparent; color: inherit; border: 0; }"));
+        check("selecting text keeps a pale tint, not a dark band",
+          doc.includes("::selection { background: var(--accent-soft); color: var(--accent-ink); }"));
+        check("scripts are never emitted", !/<script/i.test(doc));
+        const docFile = exporter.docFor(chat, options);
+        check("doc export wraps the same body for Word",
+          docFile.includes("WordSection1") && docFile.includes('class="sheet cover"'));
+
+        const built = await exporter.build(chat, "markdown", options);
+        check("markdown filename is slugged and dated",
+          /^java-exceptions-\d{4}-\d{2}-\d{2}\.md$/.test(built.filename), built.filename);
+
+        let pngOk = false;
+        let pngSize = 0;
+        try {
+          const png = await exporter.build(chat, "image", options);
+          pngSize = png.blob.size;
+          pngOk = png.blob.type === "image/png" && pngSize > 2000 && /\.png$/.test(png.filename);
+        } catch {
+          pngOk = false;
+          pngSize = -1;
+        }
+        check("png poster renders", pngOk, `${pngSize} bytes`);
+
+        const passed = results.filter((result) => result.pass).length;
+        const failed = results.length - passed;
+
+        document.getElementById("summary").textContent =
+          `${passed}/${results.length} checks passed${failed ? ` - ${failed} failing` : ""}`;
+        document.getElementById("summary").className = `summary ${failed ? "fail" : "pass"}`;
+        document.getElementById("results").innerHTML = results
+          .map((result) => {
+            const mark = result.pass ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>';
+            const detail = result.detail && !result.pass ? ` - ${exporter.escapeHtml(result.detail)}` : "";
+            return `<li>${mark} ${exporter.escapeHtml(result.name)}${detail}</li>`;
+          })
+          .join("");
+
+        globalThis.__selftest = { passed, failed, total: results.length, results };
+        document.title = `${failed ? "FAIL" : "PASS"} ${passed}/${results.length} - AI Exporter self-check`;
+      })();
+    </script>
+  </body>
+</html>

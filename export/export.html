@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <title>AI Exporter - Export</title>
+    <link rel="stylesheet" href="export.css">
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+      <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M9 13h1.6a1.4 1.4 0 0 1 0 2.8H9V13zm0 2.8V19"/><path d="M13.5 13v6M13.5 13h2M13.5 16h1.6"/></symbol>
+    </svg>
+
+    <header class="toolbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+        <span class="brand-copy">
+          <strong id="doc-title">Loading conversation...</strong>
+          <span class="brand-sub" id="doc-meta">Preparing your export</span>
+        </span>
+      </div>
+
+      <div class="controls" role="group" aria-label="Document options">
+        <label class="field" for="theme">Theme
+          <select id="theme">
+            <option value="light">Light &mdash; print</option>
+            <option value="dark">Dark &mdash; screen</option>
+          </select>
+        </label>
+        <label class="field" for="zoom">Zoom
+          <select id="zoom">
+            <option value="0.5">50%</option>
+            <option value="0.65" selected>65%</option>
+            <option value="0.8">80%</option>
+            <option value="1">100%</option>
+          </select>
+        </label>
+        <label class="toggle"><input type="checkbox" id="timestamps"> Timestamps</label>
+        <label class="toggle"><input type="checkbox" id="highlight"> Highlight code</label>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn--primary" id="print" type="button" title="Sends the A4 document to the print dialog. Choose 'Save as PDF' and untick 'Headers and footers' for a clean page.">
+          <svg class="icon" aria-hidden="true"><use href="#i-pdf"></use></svg> Save as PDF
+        </button>
+        <button class="btn" type="button" data-format="markdown">Markdown</button>
+        <button class="btn" type="button" data-format="txt">Text</button>
+        <button class="btn" type="button" data-format="docx">DOCX</button>
+        <button class="btn" type="button" data-format="image">Image</button>
+        <button class="btn" type="button" data-format="json">JSON</button>
+        <button class="btn btn--ghost" id="open-doc" type="button">Open in tab</button>
+      </div>
+    </header>
+
+    <div class="statusbar">
+      <p class="status" id="status" role="status" aria-live="polite">Preparing your export...</p>
+      <span class="chip" id="page-est"></span>
+    </div>
+
+    <div class="layout">
+      <aside class="picker" aria-labelledby="picker-title">
+        <div class="picker-head">
+          <h2 id="picker-title">Messages</h2>
+          <span class="chip" id="pick-count">-</span>
+        </div>
+        <div class="picker-quick" role="group" aria-label="Quick selection">
+          <button class="mini" type="button" data-select="all">Everything</button>
+          <button class="mini" type="button" data-select="assistant">Answers</button>
+          <button class="mini" type="button" data-select="user">Prompts</button>
+          <button class="mini" type="button" data-select="none">None</button>
+        </div>
+        <ol class="picker-list" id="pick-list"></ol>
+        <p class="picker-note">Everything is included by default. Untick a message to leave it out of the preview and every download.</p>
+      </aside>
+
+      <main class="stage" id="stage">
+        <div class="stage-inner" id="stage-inner">
+          <iframe id="preview" title="Export preview" sandbox="allow-same-origin allow-modals"></iframe>
+        </div>
+      </main>
+    </div>
+
+    <section class="empty" id="empty">
+      <h1>Nothing to export yet</h1>
+      <p>
+        Open the AI Exporter popup on a supported conversation (ChatGPT, Claude, Gemini or DeepSeek) and pick a
+        format. The document shows up here before it downloads, so you can check it first.
+      </p>
+    </section>
+
+    <script src="../utils/exporter.js"></script>
+    <script src="export.js"></script>
+  </body>
+</html>

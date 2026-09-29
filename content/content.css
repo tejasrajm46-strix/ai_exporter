@@ -1,0 +1,185 @@
+/**
+ * AI Exporter - injected UI.
+ *
+ * Everything is namespaced with .aix- and uses !important on the handful of
+ * properties a host page could otherwise break (position, display, size).
+ */
+
+.aix-select {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  margin: 4px 8px 2px 0 !important;
+  border: 1px solid #d9c8cc !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  vertical-align: top !important;
+  cursor: pointer !important;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.aix-select:hover {
+  border-color: #a80033 !important;
+  background: #fdf2f4 !important;
+}
+
+.aix-select__input {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  accent-color: #a80033 !important;
+  cursor: pointer !important;
+}
+
+.aix-select:focus-within {
+  outline: 2px solid #a80033 !important;
+  outline-offset: 2px !important;
+}
+
+.aix-sr {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.aix-host--selectable {
+  border-radius: 12px;
+  outline: 1px dashed rgba(168, 0, 51, 0.45);
+  outline-offset: 4px;
+}
+
+.aix-host--selected {
+  outline: 2px solid #a80033;
+  outline-offset: 4px;
+  background-color: rgba(168, 0, 51, 0.06);
+}
+
+.aix-bar {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 22px !important;
+  z-index: 2147483000 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  max-width: min(760px, calc(100vw - 32px));
+  padding: 9px 10px 9px 14px !important;
+  border-radius: 13px !important;
+  background: #6e0021 !important;
+  box-shadow: 0 14px 34px rgba(110, 0, 33, 0.34) !important;
+  color: #fdf3f5 !important;
+  font: 500 13px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  transform: translateX(-50%) !important;
+  animation: aix-rise 180ms ease-out both;
+}
+
+.aix-bar__count {
+  white-space: nowrap;
+}
+
+.aix-bar__format {
+  max-width: 190px;
+  height: 30px !important;
+  padding: 0 6px !important;
+  border: 1px solid rgba(253, 243, 245, 0.4) !important;
+  border-radius: 7px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #fdf3f5 !important;
+  font: inherit !important;
+}
+
+.aix-bar__format option {
+  color: #0f172a;
+}
+
+.aix-bar__go,
+.aix-bar__exit {
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 7px !important;
+  font: 600 13px/1 "Segoe UI", system-ui, sans-serif !important;
+  cursor: pointer !important;
+  white-space: nowrap;
+}
+
+.aix-bar__go {
+  border: 0 !important;
+  background: #d9a73f !important;
+  color: #3a2a05 !important;
+}
+
+.aix-bar__go:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+.aix-bar__exit {
+  border: 1px solid rgba(253, 243, 245, 0.45) !important;
+  background: transparent !important;
+  color: #fdf3f5 !important;
+}
+
+.aix-bar__go:focus-visible,
+.aix-bar__exit:focus-visible,
+.aix-bar__format:focus-visible {
+  outline: 2px solid #f3c969 !important;
+  outline-offset: 2px !important;
+}
+
+.aix-bar--idle {
+  padding: 8px 10px 8px 14px !important;
+}
+
+.aix-bar--idle .aix-bar__count {
+  font-weight: 500 !important;
+}
+
+.aix-bar--idle .aix-bar__format,
+.aix-bar--idle .aix-bar__go {
+  display: none !important;
+}
+
+.aix-toast {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 76px !important;
+  z-index: 2147483001 !important;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.3) !important;
+  font: 500 13px/1.45 "Segoe UI", system-ui, sans-serif !important;
+  opacity: 0;
+  pointer-events: none !important;
+  transform: translate(-50%, 8px) !important;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.aix-toast--visible {
+  opacity: 1;
+  transform: translate(-50%, 0) !important;
+}
+
+.aix-toast--error {
+  background: #7f1d1d !important;
+}
+
+@keyframes aix-rise {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aix-bar,
+  .aix-toast {
+    animation: none !important;
+    transition: none !important;
+  }
+}

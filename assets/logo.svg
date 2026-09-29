@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="AI Exporter">
+  <defs>
+    <linearGradient id="tile" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#b30036"/>
+      <stop offset="1" stop-color="#6e0021"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#tile)"/>
+  <path d="M 118 42 Q 118 116 192 116 Q 118 116 118 190 Q 118 116 44 116 Q 118 116 118 42 Z" fill="#e8be62"/>
+  <path d="M 182 159 Q 182 188 211 188 Q 182 188 182 217 Q 182 188 153 188 Q 182 188 182 159 Z" fill="#fff3dc" opacity="0.92"/>
+</svg>

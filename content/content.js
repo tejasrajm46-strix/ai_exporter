@@ -18,6 +18,8 @@
   const DEFAULT_SETTINGS = {
     includeTimestamps: false,
     preserveCodeHighlighting: true,
+    docTheme: "light",
+    docMode: "color",
     darkPdf: false
   };
 
@@ -56,7 +58,8 @@
     const settings = await readSettings();
     return {
       format: format || null,
-      theme: settings.darkPdf ? "dark" : "light",
+      theme: settings.docTheme === "dark" || settings.docTheme === "print" ? settings.docTheme : settings.darkPdf ? "dark" : "light",
+      docMode: settings.docMode === "bw" ? "bw" : "color",
       timestamps: Boolean(settings.includeTimestamps),
       highlight: settings.preserveCodeHighlighting !== false
     };

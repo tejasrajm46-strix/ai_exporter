@@ -184,33 +184,65 @@
   --body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
-/* Brand palette: wine #850027, crimson #a80033, gold #d9a73f, green #38bd5d,
-   deep green #067034. The document is the paper surface, so it leads with wine
-   ink and keeps gold for the brand mark only -- gold body text on white fails
-   contrast at this size. */
+/* Three document modes, one stylesheet. Same structure in all three, only
+   the palette changes:
+     light  - light + polished & colourful: indigo accents, lavender heading
+              bars and table headers, amber NOTE, green OUTPUT, coloured code
+     dark   - the dark reading theme: navy surfaces, indigo accents, amber
+              NOTE, green OUTPUT, coloured code
+     print  - light + printable: the same layout with every ink colour
+              collapsed to black/grey, so a mono printer or a photocopier
+              reproduces it exactly
+   The brand palette (crimson/gold) is reserved for the cover mark and the
+   extension chrome; the document body never uses it. */
 html[data-theme="light"] {
-  --stage: #f6f2f2; --paper: #ffffff; --ink: #1a1214; --ink-soft: #443236;
-  --muted: #6f5f63; --line: #eae2e2; --line-strong: #d4c4c8;
-  --accent: #850027; --accent-soft: #fdf2f4; --accent-ink: #7a0025;
-  --code-bg: #f8fafc; --code-ink: #1f2937; --code-head-bg: #eef2f7;
-  --code-head-ink: #475569; --out-bg: #f1f5f9; --code-line: #e2e8f0;
+  --stage: #f4f5f9; --paper: #ffffff; --ink: #111827; --ink-soft: #1f2937;
+  --muted: #6b7280; --line: #e5e7eb; --line-strong: #cbd5e1;
+  --accent: #4f46e5; --accent-soft: #eef2ff; --accent-ink: #4338ca;
+  --head-bg: #eef2ff; --head-ink: #1e1b4b; --head-icon: #4f46e5;
+  --code-bg: #f8fafc; --code-ink: #111827; --code-head-bg: #dbeafe;
+  --code-head-ink: #1d4ed8; --code-line: #dbeafe;
+  --out-bg: #f0fdf4; --out-head-bg: #dcfce7; --out-head-ink: #067034;
   --tok-kw: #7c3aed; --tok-str: #15803d; --tok-num: #b45309;
-  --tok-com: #64748b; --tok-fn: #1d4ed8; --tok-type: #0e7490;
-  --note-bg: #fdf2f4; --note-line: #a80033;
-  --tip-bg: #f0f9f2; --tip-line: #067034; --ok: #38bd5d;
-  --table-head: #f7f4f4; --waves: #f4d9df; --wave-opacity: 0.75;
+  --tok-com: #64748b; --tok-fn: #2563eb; --tok-type: #0e7490;
+  --note-bg: #fef6e4; --note-line: #f0b429; --note-chip: #b45309;
+  --tip-bg: #f0fdf4; --tip-line: #067034; --tip-chip: #067034; --ok: #22c55e;
+  --table-head: #eef2ff; --table-head-ink: #3730a3;
+  --bullet-a: #7c3aed; --bullet-b: #2563eb;
+  --waves: #e0e7ff; --wave-opacity: 0.75;
 }
 html[data-theme="dark"] {
-  --stage: #100207; --paper: #1b040d; --ink: #f3e8ea; --ink-soft: #dcc8cd;
-  --muted: #b39aa0; --line: #36101c; --line-strong: #4d1a29;
-  --accent: #f0c674; --accent-soft: #2c0813; --accent-ink: #f7dda6;
-  --code-bg: #0d0208; --code-ink: #ecdfe2; --code-head-bg: #22060f;
-  --code-head-ink: #f0c674; --out-bg: #070104; --code-line: #36101c;
-  --tok-kw: #c792ea; --tok-str: #98c379; --tok-num: #d19a66;
-  --tok-com: #9a8290; --tok-fn: #61afef; --tok-type: #e5c07b;
-  --note-bg: #2c0813; --note-line: #a80033;
-  --tip-bg: #05230f; --tip-line: #38bd5d; --ok: #38bd5d;
-  --table-head: #2a0714; --waves: #5a0a25; --wave-opacity: 0.9;
+  --stage: #020617; --paper: #0f172a; --ink: #e5e7eb; --ink-soft: #cbd5e1;
+  --muted: #94a3b8; --line: #1e293b; --line-strong: #334155;
+  --accent: #818cf8; --accent-soft: #1e1b4b; --accent-ink: #c7d2fe;
+  --head-bg: #1e293b; --head-ink: #e0e7ff; --head-icon: #818cf8;
+  --code-bg: #0b1220; --code-ink: #e8eef7; --code-head-bg: #1e3a8a;
+  --code-head-ink: #bfdbfe; --code-line: #1e3a8a;
+  --out-bg: #082117; --out-head-bg: #14532d; --out-head-ink: #86efac;
+  --tok-kw: #c792ea; --tok-str: #86efac; --tok-num: #fbbf24;
+  --tok-com: #94a3b8; --tok-fn: #60a5fa; --tok-type: #5eead4;
+  --note-bg: #2e2007; --note-line: #f59e0b; --note-chip: #fbbf24;
+  --tip-bg: #082117; --tip-line: #22c55e; --tip-chip: #86efac; --ok: #22c55e;
+  --table-head: #312e81; --table-head-ink: #e0e7ff;
+  --bullet-a: #f59e0b; --bullet-b: #3b82f6;
+  --waves: #312e81; --wave-opacity: 0.9;
+}
+html[data-theme="print"] {
+  --stage: #f1f5f9; --paper: #ffffff; --ink: #111827; --ink-soft: #1f2937;
+  --muted: #4b5563; --line: #d1d5db; --line-strong: #9ca3af;
+  --accent: #111827; --accent-soft: #f1f5f9; --accent-ink: #111827;
+  --head-bg: #f1f5f9; --head-ink: #111827; --head-icon: #111827;
+  --code-bg: #ffffff; --code-ink: #111827; --code-head-bg: #e5e7eb;
+  --code-head-ink: #111827; --code-line: #cbd5e1;
+  --out-bg: #ffffff; --out-head-bg: #e5e7eb; --out-head-ink: #111827;
+  /* printable code: every token prints as near-black ink */
+  --tok-kw: #111827; --tok-str: #111827; --tok-num: #111827;
+  --tok-com: #334155; --tok-fn: #111827; --tok-type: #111827;
+  --note-bg: #ffffff; --note-line: #111827; --note-chip: #111827;
+  --tip-bg: #ffffff; --tip-line: #111827; --tip-chip: #111827; --ok: #111827;
+  --table-head: #f1f5f9; --table-head-ink: #111827;
+  --bullet-a: #111827; --bullet-b: #111827;
+  --waves: #e2e8f0; --wave-opacity: 0.5;
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -232,10 +264,15 @@ body {
 
 /* cover */
 .cover { display: flex; flex-direction: column; background: var(--paper); }
-html[data-theme="dark"] .cover { background: linear-gradient(165deg, #241b52 0%, #111033 42%, #0b1120 100%); }
+html[data-theme="dark"] .cover { background: linear-gradient(165deg, #1e1b4b 0%, #111033 42%, #0f172a 100%); }
 .cover-mark { margin: 40mm auto 0; text-align: center; }
+/* The cover mark: brand gradient on the colour themes, plain ink tile when
+   printing, so the printable file carries nothing but ink. */
 .cover-logo { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto;
-  border-radius: 19px; background: linear-gradient(160deg, #b30036, #6e0021); color: #e8be62; }
+  border-radius: 19px; }
+html[data-theme="light"] .cover-logo, html[data-theme="dark"] .cover-logo {
+  background: linear-gradient(160deg, #b30036, #6e0021); color: #e8be62; }
+html[data-theme="print"] .cover-logo { background: var(--ink); color: var(--paper); }
 .cover-logo .icon { width: 30px; height: 30px; }
 .cover-kicker { margin: 12px 0 0; font-size: 10pt; }
 .cover-rule { width: 58mm; height: 2px; margin: 16px auto 0; background: var(--accent); opacity: 0.55; }
@@ -251,16 +288,22 @@ html[data-theme="dark"] .cover { background: linear-gradient(165deg, #241b52 0%,
   opacity: var(--wave-opacity); pointer-events: none; }
 .cover-art svg { width: 100%; height: 100%; display: block; }
 
-/* sections */
-.sub { margin: 18px 0 9px; font-family: var(--display); font-size: 14pt; break-after: avoid; }
+/* sections - the heading is a tinted rounded bar with a topic icon */
+.sub { display: flex; align-items: center; gap: 9px; margin: 20px 0 11px;
+  padding: 8px 13px; border-radius: 9px; background: var(--head-bg); color: var(--head-ink);
+  font-family: var(--body); font-size: 13pt; font-weight: 700; line-height: 1.3;
+  break-after: avoid; break-inside: avoid; }
+.sub .icon { width: 17px; height: 17px; color: var(--head-icon); stroke-width: 1.9; }
 .sheet p { margin: 0 0 11px; }
 .divider { margin: 16px 0; border: 0; border-top: 1px solid var(--line); }
 
 /* lists */
 .list { display: grid; gap: 7px; margin: 0 0 13px; padding: 0; list-style: none; }
 .list li { position: relative; padding-left: 20px; }
-.list li::before { content: ""; position: absolute; left: 4px; top: 0.55em; width: 6px; height: 6px;
-  border-radius: 50%; background: var(--accent); }
+.list li::before { content: ""; position: absolute; left: 4px; top: 0.52em; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--bullet-a); }
+/* alternating bullet dots, purple then blue, exactly like the polished mode */
+.list li:nth-child(even)::before { background: var(--bullet-b); }
 .list ol, .list ul { margin-top: 6px; }
 .list--checks li::before { display: none; }
 .tick { position: absolute; left: 1px; top: 0.28em; width: 14px; height: 14px; border-radius: 50%;
@@ -270,12 +313,14 @@ html[data-theme="dark"] .cover { background: linear-gradient(165deg, #241b52 0%,
 /* code */
 .code { margin: 0 0 14px; border: 1px solid var(--code-line); border-radius: 10px; overflow: hidden;
   background: var(--code-bg); break-inside: avoid; page-break-inside: avoid; }
-.code-head { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px;
+.code-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
   border-bottom: 1px solid var(--code-line); background: var(--code-head-bg); color: var(--code-head-ink);
-  font-size: 8.5pt; letter-spacing: 0.06em; text-transform: uppercase; }
+  font-size: 9pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.code-head .icon { width: 15px; height: 15px; stroke-width: 2; }
 .code pre { margin: 0; padding: 12px 14px; color: var(--code-ink); font-family: var(--mono); font-size: 9.5pt;
   line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-.code--output .code-head { background: transparent; }
+/* the OUTPUT panel is tinted apart from the code panel, in every mode */
+.code--output .code-head { background: var(--out-head-bg); color: var(--out-head-ink); }
 .code--output pre { background: var(--out-bg); }
 .tok-kw { color: var(--tok-kw); } .tok-str { color: var(--tok-str); } .tok-num { color: var(--tok-num); }
 .tok-com { color: var(--tok-com); font-style: italic; }
@@ -291,16 +336,18 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
 .tex { font-family: var(--mono); font-style: italic; color: var(--accent-ink); }
 
 /* callouts, tables, figures, math */
-.callout { margin: 0 0 14px; padding: 12px 15px; border-left: 4px solid var(--note-line);
-  border-radius: 8px; background: var(--note-bg); break-inside: avoid; }
-.callout--tip { border-left-color: var(--tip-line); background: var(--tip-bg); }
-.callout-chip { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-ink);
-  font-size: 9pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.callout { margin: 0 0 14px; padding: 12px 15px 13px; border: 1.5px solid var(--note-line);
+  border-radius: 10px; background: var(--note-bg); break-inside: avoid; }
+.callout--tip { border-color: var(--tip-line); background: var(--tip-bg); }
+.callout-chip { display: inline-flex; align-items: center; gap: 7px; color: var(--note-chip);
+  font-size: 10pt; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.callout-chip .icon { width: 16px; height: 16px; stroke-width: 2; }
+.callout--tip .callout-chip { color: var(--tip-chip); }
 .callout p { margin: 7px 0 0; }
 .grid { width: 100%; margin: 0 0 14px; border-collapse: collapse; font-size: 9.5pt;
   break-inside: avoid; page-break-inside: avoid; }
 .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-.grid th { background: var(--table-head); font-weight: 650; }
+.grid th { background: var(--table-head); color: var(--table-head-ink); font-weight: 700; }
 .figure { margin: 0 0 14px; text-align: center; break-inside: avoid; }
 .figure img { max-width: 100%; border: 1px solid var(--line); border-radius: 8px; }
 .figure figcaption { margin-top: 8px; color: var(--muted); font-size: 9pt; }
@@ -347,6 +394,10 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
 <symbol id="i-format" viewBox="0 0 24 24"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></symbol>
 <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2.5l2 5.2 5.5 2-5.5 2-2 5.2-2-5.2-5.5-2 5.5-2z"/><path d="M18.5 16.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+<symbol id="i-topic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 9.5h8M8 14h5"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></symbol>
+<symbol id="i-terminal" viewBox="0 0 24 24"><path d="M4 6.5l5.5 5.5L4 17.5M12.5 18H20"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 11.2v5M12 7.6h.01" stroke="#ffffff"/></symbol>
 </svg>`;
 
   function icon(id, className = "icon") {
@@ -368,7 +419,7 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
     const label = block.output ? "Output" : String(block.language || "code").replace(/^\w/, (c) => c.toUpperCase());
     const body = options.highlight !== false ? highlight(block.code, block.language) : escapeHtml(block.code);
     return `<figure class="code${block.output ? " code--output" : ""}">
-<div class="code-head"><span class="code-lang">${escapeHtml(block.output ? "Output" : label)}</span></div>
+<div class="code-head">${icon(block.output ? "i-terminal" : "i-code")}<span class="code-lang">${escapeHtml(label)}</span></div>
 <pre><code>${body}</code></pre></figure>`;
   }
 
@@ -396,14 +447,14 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
     switch (block.type) {
       case "heading":
       case "subheading":
-        return `<h3 class="sub">${formatInline(block.text)}</h3>`;
+        return `<h3 class="sub">${icon("i-topic")}${formatInline(block.text)}</h3>`;
       case "paragraph":
         return `<p>${formatInline(block.text)}</p>`;
       case "list":
         return renderList(block, state);
       case "quote":
         return `<aside class="callout${/^(note|tip|key point|important)/i.test(plainInline(block.text)) ? " callout--tip" : ""}">
-<span class="callout-chip">${icon("i-info")}Note</span><p>${formatInline(block.text)}</p></aside>`;
+<span class="callout-chip">${icon("i-note")}Note</span><p>${formatInline(block.text)}</p></aside>`;
       case "code":
         return renderCode(block, options);
       case "table":
@@ -449,13 +500,21 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
 
   /* -------------------------------------------------------- document assembly */
 
+  /** What the cover calls this file, so a Word export never claims to be a PDF. */
+  function formatLabel(settings) {
+    if (settings.format === "docx") {
+      return settings.docMode === "bw" ? "Word (black & white)" : "Word (colour)";
+    }
+    return settings.theme === "dark" ? "PDF (Dark Theme)" : settings.theme === "print" ? "PDF (Printable)" : "PDF (A4, Portrait)";
+  }
+
   function coverSheet(chat, options) {
     const rows = [
       ["i-platform", "Platform", chat.platformLabel || "Unknown"],
       ["i-model", "Model", chat.model || "Unknown"],
       ["i-messages", "Total Messages", `${(chat.messages || []).length} messages`],
       ["i-calendar", "Exported On", formatDate(chat.exportedAt, true)],
-      ["i-format", "Format", options.theme === "dark" ? "PDF (Dark Theme)" : "PDF (A4, Portrait)"]
+      ["i-format", "Format", formatLabel(options)]
     ];
     return `<article class="sheet cover">
 <div class="cover-mark">
@@ -493,7 +552,9 @@ ${renderBlocks(section.blocks, settings, state)}</article>`;
   /** Build the styled document body + css shared by HTML, DOC and print. */
   function buildDocument(chat, options = {}) {
     const settings = {
-      theme: options.theme === "dark" ? "dark" : "light",
+      theme: options.theme === "dark" ? "dark" : options.theme === "print" ? "print" : "light",
+      format: options.format === "docx" ? "docx" : "pdf",
+      docMode: options.docMode === "bw" ? "bw" : "color",
       timestamps: Boolean(options.timestamps),
       highlight: options.highlight !== false
     };
@@ -635,7 +696,8 @@ ${body}
         ...chat,
         export: {
           generator: `AI Exporter ${VERSION}`,
-          theme: options.theme === "dark" ? "dark" : "light",
+          theme: options.theme === "dark" ? "dark" : options.theme === "print" ? "print" : "light",
+          docMode: options.docMode === "bw" ? "bw" : "color",
           timestamps: Boolean(options.timestamps),
           highlight: options.highlight !== false
         }
@@ -645,19 +707,67 @@ ${body}
     )}\n`;
   }
 
+  /** Read one CSS block into a name -> value map. */
+  function cssBlock(css, selector) {
+    const block = css.match(new RegExp(`${selector}\\s*\\{([^}]*)\\}`));
+    const map = {};
+    if (!block) return map;
+    // comments first: one of them contains a colon and would poison the split
+    for (const decl of block[1].replace(/\/\*[\s\S]*?\*\//g, "").split(";")) {
+      const colon = decl.indexOf(":");
+      if (colon > 0) map[decl.slice(0, colon).trim()] = decl.slice(colon + 1).trim();
+    }
+    return map;
+  }
+
+  /**
+   * Word's HTML parser has no CSS custom properties, so every var(--x) in a
+   * .doc would be an invalid declaration and the file would lose its panels,
+   * borders and ink. Bake the chosen mode's values in as literals instead.
+   */
+  function inlineVars(css, theme) {
+    const vars = { ...cssBlock(css, ":root"), ...cssBlock(css, `html\\[data-theme="${theme}"\\]`) };
+    return css.replace(/var\((--[a-z-]+)\)/g, (whole, name) => vars[name] || whole);
+  }
+
   function docFor(chat, options = {}) {
-    const { css, body, settings } = buildDocument(chat, options);
+    /* The Word export has its own two-way switch - colour, or a plain
+       black-and-white handout - and reuses the light and print palettes. It is
+       deliberately independent of the PDF theme: a dark PDF should not turn
+       the Word file dark too. */
+    const docOptions = {
+      ...options,
+      format: "docx",
+      theme: options.docMode === "bw" ? "print" : "light"
+    };
+    const { css, body, settings } = buildDocument(chat, docOptions);
+    /* Word also has no flexbox, grid or ::before, so the same document is given
+       a plain-HTML fallback that still reads as a structured handout: real list
+       markers, block-level bars, no decorative tiles. */
+    /* Every var() is inlined first, and that is what actually colours the Word
+       file: Word ignores html[data-theme=...] outright, so every rule hanging
+       off it is already dead. They are dropped rather than shipped - they are
+       the only colour that would survive into the black-and-white mode, and the
+       one that is hidden in Word (the cover mark) is restyled for screen use
+       by the stylesheet the browser renders from the same source. */
+    const flatCss = inlineVars(css, settings.theme).replace(/html\[data-theme="[a-z]+"\][^{]*\{[^{}]*\}\s*/g, "");
+    const docCss = `${flatCss}
+@page WordSection1 { size: A4; margin: 15mm 14mm; }
+div.WordSection1 { page: WordSection1; }
+.sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+.list { display: block; list-style: disc; padding-left: 22px; }
+.list li { padding-left: 0; }
+.list li::before { display: none; }
+.list--checks { list-style: none; }
+.sub, .code-head, .meta-row, .turn-head { display: block; }
+.icon, .cover-logo, .cover-art { display: none; }`;
     return `<!doctype html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(chat.title || "AI conversation")}</title>
 <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
-<style>${css}
-@page WordSection1 { size: A4; margin: 15mm 14mm; }
-div.WordSection1 { page: WordSection1; }
-.sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
-</style>
+<style>${docCss}</style>
 </head>
 <body><div class="WordSection1" data-theme="${settings.theme}">${SPRITE}
 ${body}
@@ -670,13 +780,18 @@ ${body}
   const PNG_THEMES = {
     light: {
       page: "#ffffff", ink: "#111827", muted: "#6b7280", line: "#e5e7eb",
-      accent: "#850027", accentSoft: "#fdf2f4", codeBg: "#f8fafc", codeHead: "#eef2f7",
-      codeInk: "#1f2937", codeHeadInk: "#475569", noteBg: "#fdf2f4", tipBg: "#f0f9f2"
+      accent: "#4f46e5", accentSoft: "#eef2ff", codeBg: "#f8fafc", codeHead: "#dbeafe",
+      codeInk: "#111827", codeHeadInk: "#1d4ed8", noteBg: "#fef6e4", tipBg: "#f0fdf4"
     },
     dark: {
       page: "#0f172a", ink: "#e5e7eb", muted: "#94a3b8", line: "#1e293b",
-      accent: "#f0c674", accentSoft: "#2c0813", codeBg: "#0d0208", codeHead: "#22060f",
-      codeInk: "#ecdfe2", codeHeadInk: "#f0c674", noteBg: "#2c0813", tipBg: "#05230f"
+      accent: "#818cf8", accentSoft: "#1e1b4b", codeBg: "#0b1220", codeHead: "#1e3a8a",
+      codeInk: "#e8eef7", codeHeadInk: "#bfdbfe", noteBg: "#2e2007", tipBg: "#082117"
+    },
+    print: {
+      page: "#ffffff", ink: "#111827", muted: "#4b5563", line: "#d1d5db",
+      accent: "#111827", accentSoft: "#f1f5f9", codeBg: "#ffffff", codeHead: "#e5e7eb",
+      codeInk: "#111827", codeHeadInk: "#111827", noteBg: "#ffffff", tipBg: "#ffffff"
     }
   };
 
@@ -694,7 +809,7 @@ ${body}
    * second, so a 1x measuring context and the real 2x context share one pass.
    */
   function pngLayout(chat, options, ctx) {
-    const theme = PNG_THEMES[options.theme === "dark" ? "dark" : "light"];
+    const theme = PNG_THEMES[options.theme === "dark" ? "dark" : options.theme === "print" ? "print" : "light"];
     const W = 1240;
     const PAD = 78;
     const width = W - PAD * 2;

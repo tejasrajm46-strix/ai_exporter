@@ -29,7 +29,7 @@
   const sheetWidth = 794; // 210mm at 96dpi
   const sheetHeight = 1123; // 297mm at 96dpi
 
-  const options = { theme: "light", timestamps: false, highlight: true, format: null };
+  const options = { theme: "light", docMode: "color", timestamps: false, highlight: true, format: null };
 
   let chat = null;
   const included = new Set(); // indexes of chat.messages that stay in the export
@@ -43,11 +43,14 @@
   }
 
   function persistSettings() {
+    const theme = options.theme === "dark" || options.theme === "print" ? options.theme : "light";
     chrome.storage.local
       .set({
         includeTimestamps: options.timestamps,
         preserveCodeHighlighting: options.highlight,
-        darkPdf: options.theme === "dark"
+        docTheme: theme,
+        docMode: options.docMode === "bw" ? "bw" : "color",
+        darkPdf: theme === "dark"
       })
       .catch(() => {});
   }
@@ -261,7 +264,9 @@
       setStatus(
         options.theme === "dark"
           ? "Print dialog open. Destination 'Save as PDF', paper A4 - untick 'Headers and footers', and keep 'Background graphics' on for the dark theme."
-          : "Print dialog open. Destination 'Save as PDF', paper A4 - untick 'Headers and footers' to drop the browser's date and URL lines.",
+          : options.theme === "print"
+            ? "Print dialog open. Destination 'Save as PDF', paper A4 - untick 'Headers and footers'. The printable theme is built for black-and-white printing."
+            : "Print dialog open. Destination 'Save as PDF', paper A4 - untick 'Headers and footers' to drop the browser's date and URL lines.",
         ""
       );
     }, 600);
@@ -283,6 +288,18 @@
       options.theme = event.target.value;
       persistSettings();
       render(true);
+    });
+
+    byId("doc-mode").addEventListener("change", (event) => {
+      // The Word mode only affects the DOC download, so the preview stays put.
+      options.docMode = event.target.value === "bw" ? "bw" : "color";
+      persistSettings();
+      setStatus(
+        options.docMode === "bw"
+          ? "Word downloads will be black and white, for clean printing."
+          : "Word downloads will be light and colourful.",
+        "ok"
+      );
     });
 
     byId("zoom").addEventListener("change", applyScale);
@@ -334,7 +351,8 @@
       return;
     }
 
-    byId("theme").value = options.theme === "dark" ? "dark" : "light";
+    byId("theme").value = options.theme === "dark" ? "dark" : options.theme === "print" ? "print" : "light";
+    byId("doc-mode").value = options.docMode === "bw" ? "bw" : "color";
     byId("timestamps").checked = Boolean(options.timestamps);
     byId("highlight").checked = options.highlight !== false;
 

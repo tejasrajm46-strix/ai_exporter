@@ -87,9 +87,20 @@
             <span>Preserve code highlighting</span>
             <input id="code-highlighting" type="checkbox">
           </label>
-          <label class="setting-row" for="dark-pdf">
-            <span>Dark document theme</span>
-            <input id="dark-pdf" type="checkbox">
+          <label class="setting-row" for="doc-theme">
+            <span>Document theme</span>
+            <select id="doc-theme">
+              <option value="light">1 &middot; Light (colourful)</option>
+              <option value="dark">2 &middot; Dark</option>
+              <option value="print">3 &middot; Light (printable)</option>
+            </select>
+          </label>
+          <label class="setting-row" for="doc-mode">
+            <span>Word document</span>
+            <select id="doc-mode">
+              <option value="color">1 &middot; Light &amp; colourful</option>
+              <option value="bw">2 &middot; Clean black &amp; white</option>
+            </select>
           </label>
         </div>
       </details>

@@ -137,7 +137,8 @@ function sanitizeOptions(options) {
   const formats = ["pdf", "markdown", "txt", "docx", "image", "json"];
   return {
     format: formats.includes(source.format) ? source.format : null,
-    theme: source.theme === "dark" ? "dark" : "light",
+    theme: source.theme === "dark" ? "dark" : source.theme === "print" ? "print" : "light",
+    docMode: source.docMode === "bw" ? "bw" : "color",
     timestamps: Boolean(source.timestamps),
     highlight: source.highlight !== false
   };

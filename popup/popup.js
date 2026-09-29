@@ -14,13 +14,16 @@
   const DEFAULT_SETTINGS = {
     includeTimestamps: false,
     preserveCodeHighlighting: true,
-    darkPdf: false
+    darkPdf: false,
+    docTheme: "light",
+    docMode: "color"
   };
 
   const settingControls = {
     includeTimestamps: document.querySelector("#include-timestamps"),
     preserveCodeHighlighting: document.querySelector("#code-highlighting"),
-    darkPdf: document.querySelector("#dark-pdf")
+    docTheme: document.querySelector("#doc-theme"),
+    docMode: document.querySelector("#doc-mode")
   };
 
   const ui = {
@@ -102,7 +105,11 @@
 
     ui.indicator.classList.add("is-supported");
     const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
-    for (const [key, control] of Object.entries(settingControls)) control.checked = Boolean(settings[key]);
+    for (const [key, control] of Object.entries(settingControls)) {
+      if (control.type === "checkbox") control.checked = Boolean(settings[key]);
+      else if (key === "docTheme") control.value = settings.docTheme === "dark" || settings.docTheme === "print" ? settings.docTheme : settings.darkPdf ? "dark" : "light";
+      else if (key === "docMode") control.value = settings.docMode === "bw" ? "bw" : "color";
+    }
 
     try {
       const response = await send(tab.id, { type: "GET_PAGE_STATE" });
@@ -129,7 +136,13 @@
   function bindSettings() {
     for (const [key, control] of Object.entries(settingControls)) {
       control.addEventListener("change", () => {
-        chrome.storage.local.set({ [key]: control.checked }).catch(() => setStatus("Could not save that setting.", "error"));
+        let write;
+        // docTheme is the real setting; darkPdf stays in sync for any older
+        // read of storage (the export view also still keys off it).
+        if (key === "docTheme") write = { docTheme: control.value, darkPdf: control.value === "dark" };
+        else if (key === "docMode") write = { docMode: control.value === "bw" ? "bw" : "color" };
+        else write = { [key]: control.checked };
+        chrome.storage.local.set(write).catch(() => setStatus("Could not save that setting.", "error"));
       });
     }
   }

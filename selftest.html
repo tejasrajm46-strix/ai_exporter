@@ -241,19 +241,97 @@
         check("document highlights code when asked", doc.includes('class="tok-kw"'));
         check("highlighting can be turned off",
           !exporter.documentHtml(chat, { ...options, highlight: false }).includes('class="tok-kw"'));
+        const darkDoc = exporter.documentHtml(chat, { ...options, theme: "dark" });
+        const printDoc = exporter.documentHtml(chat, { ...options, theme: "print" });
         check("dark theme sets the theme attribute",
-          exporter.documentHtml(chat, { ...options, theme: "dark" }).includes('<html lang="en" data-theme="dark">'));
+          darkDoc.includes('<html lang="en" data-theme="dark">'));
         check("dark theme keeps its dark code panels",
-          exporter.documentHtml(chat, { ...options, theme: "dark" }).includes("--code-bg: #0d0208"));
+          darkDoc.includes("--code-bg: #0b1220"));
         const lightCss = doc.slice(doc.indexOf('html[data-theme="light"]'), doc.indexOf('html[data-theme="dark"]'));
-        check("light theme puts code on paper, not on a dark panel",
-          lightCss.includes("--code-bg: #f8fafc") && !lightCss.includes("#1e293b") && !lightCss.includes("#0f172a"),
-          lightCss.slice(lightCss.indexOf("--code-bg"), lightCss.indexOf("--code-bg") + 90));
-        check("light theme colours the code tokens for paper",
-          lightCss.includes("--tok-kw: #7c3aed") && !lightCss.includes("#c792ea"));
+        const darkCss = darkDoc.slice(darkDoc.indexOf('html[data-theme="dark"]'), darkDoc.indexOf('html[data-theme="print"]'));
+        const printCss = printDoc.slice(printDoc.indexOf('html[data-theme="print"]'), printDoc.indexOf("*, *::before"));
+        const themeCss = { light: lightCss, dark: darkCss, print: printCss };
+        const themeDoc = { light: doc, dark: darkDoc, print: printDoc };
+        const MODES = ["light", "dark", "print"];
+        const varsOf = (css) => Object.fromEntries(
+          [...css.matchAll(/(--[a-z-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+        const themeVars = Object.fromEntries(MODES.map((t) => [t, varsOf(themeCss[t])]));
+        check("all three modes define the same palette slots",
+          MODES.every((t) => ["accent", "head-bg", "head-ink", "head-icon", "out-bg", "out-head-bg",
+            "table-head", "table-head-ink", "bullet-a", "bullet-b", "note-bg", "note-line", "note-chip", "tok-kw"]
+            .every((k) => themeVars[t][`--${k}`])),
+          JSON.stringify(MODES.map((t) => Object.keys(themeVars[t]).length)));
+        check("every mode puts a topic icon in a tinted heading bar",
+          MODES.every((t) => themeDoc[t].includes('<h3 class="sub"><svg class="icon" aria-hidden="true"><use href="#i-topic">') &&
+            themeVars[t]["--head-bg"] !== themeVars[t]["--paper"]));
+        check("every mode tints the code panel header apart from the code body",
+          MODES.every((t) => themeVars[t]["--code-head-bg"] !== themeVars[t]["--code-bg"]),
+          MODES.map((t) => `${t}:${themeVars[t]["--code-head-bg"]}`).join(" "));
+        check("the colour modes tint the OUTPUT panel apart from the code panel",
+          ["light", "dark"].every((t) => themeVars[t]["--out-bg"] !== themeVars[t]["--code-bg"] &&
+            themeVars[t]["--out-head-bg"] !== themeVars[t]["--code-head-bg"]),
+          MODES.map((t) => `${t}:${themeVars[t]["--out-bg"]}`).join(" "));
+        check("modes 1 and 2 label and icon the code panel in the code colour, not grey",
+          ["light", "dark"].every((t) => themeVars[t]["--code-head-ink"] !== "#475569" &&
+            themeVars[t]["--code-head-ink"] !== "#cbd5e1"));
+        const lum = (hex) => {
+          const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+            .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+          return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+        };
+        const ratio = (a, b) => {
+          const [hi, lo] = [lum(a), lum(b)].sort((m, n) => n - m);
+          return (hi + 0.05) / (lo + 0.05);
+        };
+        // Saturation, not rgb spread: the printable ink is slate (#334155), a
+        // tinted grey that a naive max-min test would call a colour.
+        const isColour = (hex) => {
+          const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          return (mx === mn ? 0 : (mx - mn) / (mx + mn <= 255 ? mx + mn : 510 - mx - mn)) > 0.4;
+        };
+        const codeContrast = MODES.map((t) => [t, +ratio(themeVars[t]["--code-ink"], themeVars[t]["--code-bg"]).toFixed(1)]);
+        check("code text clears AAA contrast on its panel in every mode",
+          codeContrast.every(([, r]) => r >= 7), JSON.stringify(codeContrast));
+        const headContrast = MODES.map((t) => [t, +ratio(themeVars[t]["--code-head-ink"], themeVars[t]["--code-head-bg"]).toFixed(1)]);
+        check("the code panel header label clears AA contrast in every mode",
+          headContrast.every(([, r]) => r >= 4.5), JSON.stringify(headContrast));
+        check("mode 1 is the polished, colourful light theme",
+          lightCss.includes("--code-bg: #f8fafc") && lightCss.includes("--tok-kw: #7c3aed") &&
+          lightCss.includes("--accent: #4f46e5") && lightCss.includes("--note-bg: #fef6e4"));
+        check("mode 2 is the dark theme",
+          darkCss.includes("--paper: #0f172a") && darkCss.includes("--accent: #818cf8"));
+        check("mode 3 prints NOTE as black ink on white",
+          printCss.includes("--note-bg: #ffffff") && printCss.includes("--note-line: #111827") &&
+          printCss.includes("--note-chip: #111827"));
+        check("mode 3 prints the heading bar as light grey with black ink",
+          printCss.includes("--head-bg: #f1f5f9") && printCss.includes("--head-ink: #111827"));
+        check("mode 3 keeps code as black ink on a light panel with a grey header",
+          printCss.includes("--code-bg: #ffffff") && printCss.includes("--code-ink: #111827") &&
+          printCss.includes("--code-head-bg: #e5e7eb") && printCss.includes("--code-head-ink: #111827"),
+          printCss.slice(printCss.indexOf("--code-bg"), printCss.indexOf("--code-bg") + 120));
+        const printTokens = printCss.match(/--tok-[a-z]+:\s*#[0-9a-f]{6}/gi) || [];
+        const colourfulPrintTokens = printTokens.filter((token) => isColour(token.slice(token.indexOf("#"))));
+        check("print theme renders every code token as near-black ink",
+          printTokens.length >= 6 && colourfulPrintTokens.length === 0,
+          colourfulPrintTokens.join(" "));
+        check("print theme sets the theme attribute",
+          printDoc.includes('<html lang="en" data-theme="print">'));
+        const BANNED_PRINT = ["#850027", "#a80033", "#d9a73f", "#e8be62", "#38bd5d", "#067034", "#b30036", "#6e0021",
+          "#f0c674", "#fdf2f4", "#241b52", "#4f46e5", "#4338ca", "#eef2ff", "#e0e7ff", "#818cf8", "#c7d2fe",
+          "#7c3aed", "#2563eb", "#f0b429", "#fef6e4", "#f0fdf4", "#dcfce7", "#22c55e",
+          "#dbeafe", "#1d4ed8", "#1e3a8a", "#bfdbfe", "#e8eef7", "#14532d", "#86efac", "#082117"];
+        check("mode 3 carries no colour at all, brand or accent",
+          BANNED_PRINT.every((hex) => !printCss.includes(hex)),
+          BANNED_PRINT.filter((hex) => printCss.includes(hex)).join(" "));
+        check("the brand palette is confined to the cover mark",
+          [lightCss, darkCss].every((css) => ["#850027", "#a80033", "#f0c674"].every((hex) => !css.includes(hex))) &&
+          doc.includes("linear-gradient(160deg, #b30036, #6e0021)"));
+        check("the cover mark is brand gradient on screen and ink when printing",
+          doc.includes("linear-gradient(160deg, #b30036, #6e0021)") && printCss.includes("--accent: #111827"));
         check("print gets real page margins from @page, not from the sheet box",
-          doc.includes("@page { size: A4 portrait; margin: 15mm 14mm; }") &&
-          doc.includes(".sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }"));
+          printDoc.includes("@page { size: A4 portrait; margin: 15mm 14mm; }") &&
+          printDoc.includes(".sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }"));
         check("print keeps headings with what they introduce",
           doc.includes(".sub, .turn-head, h1, h2, h3 { break-after: avoid;"));
         check("no fake page numbers or table of contents", !doc.includes("sheet-foot") && !doc.includes("toc-page"));
@@ -265,6 +343,28 @@
         const docFile = exporter.docFor(chat, options);
         check("doc export wraps the same body for Word",
           docFile.includes("WordSection1") && docFile.includes('class="sheet cover"'));
+        // Word's HTML parser has no CSS custom properties, so a .doc that still
+        // says var(--ink) loses its ink, panel fills and table borders.
+        const DOC_MODES = ["color", "bw"];
+        const docFiles = DOC_MODES.map((mode) => exporter.docFor(chat, { ...options, docMode: mode }));
+        check("doc export bakes each mode's values in as literals",
+          docFiles.every((d) => !/var\(--/.test(d) && d.includes("border: 1px solid #")),
+          docFiles.map((d) => (d.match(/var\(--[a-z-]+\)/g) || []).join(" ")).join(" | "));
+        check("the Word export defaults to its light, colourful mode", docFile === docFiles[0]);
+        check("the Word colour mode keeps the light panel and its coloured tokens",
+          docFiles[0].includes("background: #f8fafc") && docFiles[0].includes("color: #7c3aed"));
+        const bwHexes = docFiles[1].match(/#[0-9a-f]{6}\b/gi) || [];
+        check("the black-and-white Word mode carries no colour at all",
+          bwHexes.length >= 20 && !bwHexes.some(isColour),
+          bwHexes.filter(isColour).slice(0, 6).join(" "));
+        check("the Word mode ignores the PDF theme: a dark PDF still yields a light Word file",
+          exporter.docFor(chat, { ...options, theme: "dark", docMode: "color" }) === docFiles[0]);
+        check("the cover names the Word format instead of claiming to be a PDF",
+          docFiles[0].includes("Word (colour)") && docFiles[1].includes("Word (black &amp; white)") &&
+          !docFiles[0].includes("PDF ("));
+        check("Word can still list: the doc fallback restores real markers",
+          docFiles.every((d) => d.includes(".list { display: block; list-style: disc; padding-left: 22px; }") &&
+            d.includes(".icon, .cover-logo, .cover-art { display: none; }")));
 
         const built = await exporter.build(chat, "markdown", options);
         check("markdown filename is slugged and dated",

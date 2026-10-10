@@ -12,6 +12,13 @@
 (() => {
   "use strict";
 
+  /* The popup can inject this file on demand into a tab that was already open
+     when the extension loaded, so evaluating it twice has to be harmless:
+     a second copy would answer every message twice and duplicate the selection
+     state. */
+  if (globalThis.__AIExporterContentLoaded) return;
+  globalThis.__AIExporterContentLoaded = true;
+
   const parser = globalThis.AIExporterParser;
   if (!parser) return;
 
@@ -293,12 +300,27 @@
 
   /* --------------------------------------------------------------- messaging */
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Only this extension's own pages and worker can address a content-script
+    // listener, but this script runs inside an untrusted page, so the contract
+    // is checked here as well instead of being taken on trust.
+    if (!sender || sender.id !== chrome.runtime.id) return false;
     const type = message && message.type;
+
+    // The popup uses this to find out whether it is talking to a live content
+    // script before it decides to inject one.
+    if (type === "PING") {
+      sendResponse({ ok: true, injected: true });
+      return false;
+    }
 
     if (type === "GET_PAGE_STATE") {
       const chat = parser.parsePage(document, location);
-      sendResponse({ ok: true, chat, selection: selectionState() });
+      /* A page the parser cannot read is the one case worth explaining: these
+         sites redesign their DOM without notice, so the popup is told which
+         selectors missed instead of only "nothing parsed". */
+      const diagnostics = chat.messages.length ? null : parser.diagnose(document, location);
+      sendResponse({ ok: true, chat, diagnostics, selection: selectionState() });
       return false;
     }
 

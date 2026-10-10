@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Exporter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Export AI conversations locally in useful document formats.",
   "icons": {
     "16": "icons/icon16.png",

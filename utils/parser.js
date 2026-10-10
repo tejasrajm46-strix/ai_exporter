@@ -51,11 +51,22 @@
     { id: "deepseek", label: "DeepSeek", host: /(^|\.)(deepseek\.com|chat\.deepseek\.com)$/i }
   ];
 
-  // Verified against a live ChatGPT conversation: each turn is a
-  // <section data-testid="conversation-turn-N">, the role attribute sits on a
-  // descendant, and the message body is .markdown (assistant) or a
-  // .whitespace-pre-wrap div (user).
+  /**
+   * ChatGPT serves two layouts, chosen per account, so both have to be here.
+   *
+   * Original: each turn is a <section data-testid="conversation-turn-N">, the
+   * role sits on a descendant, and the body is .markdown (assistant) or a
+   * .whitespace-pre-wrap div (user).
+   *
+   * "Chat / Work" layout (rolled out per account, observed dropping every
+   * marker above at once): the turn carries data-turn-key, and the message unit
+   * carries data-content-search-unit-key whose value ends in ":user" or
+   * ":assistant", e.g. "thread:3:assistant". The role-bearing candidates come
+   * first on purpose - see the pool rule in findMessages.
+   */
   const CHATGPT = [
+    { selector: "[data-content-search-unit-key]", role: roleFromSearchUnit },
+    { selector: "[data-turn-key]", role: roleFromTurnKey },
     { selector: 'section[data-testid^="conversation-turn"]', role: roleFromAttribute },
     { selector: '[data-testid^="conversation-turn"]', role: roleFromAttribute },
     { selector: "[data-message-author-role]", role: roleFromAttribute }
@@ -136,6 +147,24 @@
     return element.getAttribute("data-author") || "";
   }
 
+  /**
+   * Role read from a marker whose value ends in the role, e.g. ChatGPT's
+   * data-content-search-unit-key ("...:3:assistant") or a data-turn-key of the
+   * same shape. Anything else returns "" and leaves the role to inference.
+   */
+  function roleFromKeySuffix(value) {
+    const match = /(?:^|[:|_-])(user|human|assistant|ai|model)$/i.exec(String(value == null ? "" : value).trim());
+    return match ? normalizeRole(match[1]) : "";
+  }
+
+  function roleFromSearchUnit(element) {
+    return roleFromKeySuffix(element.getAttribute("data-content-search-unit-key"));
+  }
+
+  function roleFromTurnKey(element) {
+    return roleFromKeySuffix(element.getAttribute("data-turn-key"));
+  }
+
   function platformFor(hostname) {
     const host = String(hostname || "");
     return PLATFORMS.find((platform) => platform.host.test(host)) || null;
@@ -145,6 +174,52 @@
 
   function plainOf(element) {
     return inlineOf(element).replace(/\*\*/g, "").replace(/\*/g, "").replace(/`/g, "").trim();
+  }
+
+  // Visually hidden or aria-hidden nodes (e.g. ChatGPT's "ChatGPT said:" label)
+  // are screen-reader text, not conversation text.
+  const HIDDEN_CLASS = /(^|\s)(sr-only|visually-hidden)(\s|$)/;
+  function isHidden(element) {
+    return (
+      element.hidden === true ||
+      element.getAttribute("aria-hidden") === "true" ||
+      HIDDEN_CLASS.test(String(element.className || ""))
+    );
+  }
+
+  const LINE_TAGS = new Set([
+    "DIV", "P", "LI", "TR", "BLOCKQUOTE", "UL", "OL", "PRE", "SECTION",
+    "H1", "H2", "H3", "H4", "H5", "H6"
+  ]);
+
+  // Text of a code element with its line structure kept. Lines come from
+  // newline characters, <br>, and block-level wrappers, so markup that puts
+  // each line in its own block still yields one line per source line.
+  function codeTextOf(element) {
+    let out = "";
+    const newline = () => {
+      if (out && !out.endsWith("\n")) out += "\n";
+    };
+    const visit = (node) => {
+      for (const child of node.childNodes) {
+        if (child.nodeType === 3) {
+          out += child.textContent;
+          continue;
+        }
+        if (child.nodeType !== 1) continue;
+        if (SKIP_TAGS.has(child.tagName) || isHidden(child)) continue;
+        if (child.tagName === "BR") {
+          out += "\n";
+          continue;
+        }
+        const block = LINE_TAGS.has(child.tagName);
+        if (block) newline();
+        visit(child);
+        if (block) newline();
+      }
+    };
+    visit(element);
+    return out;
   }
 
   function inlineOf(element) {
@@ -157,7 +232,7 @@
         }
         if (child.nodeType !== 1) continue;
         const tag = child.tagName;
-        if (SKIP_TAGS.has(tag)) continue;
+        if (SKIP_TAGS.has(tag) || isHidden(child)) continue;
         if (child.classList && child.classList.contains("aix-select")) continue;
         if (child.classList && child.classList.contains("katex")) {
           const tex = texOf(child);
@@ -267,9 +342,20 @@
     return languageToken(element.textContent);
   }
 
+  // A non-<pre> wrapper whose text is essentially one multi-line <code> sample.
+  // Without this, inlineOf collapses its line breaks into spaces.
+  function isCodeContainer(element) {
+    const code = element.querySelector("code");
+    if (!code) return false;
+    const text = codeTextOf(code);
+    if (!text.includes("\n")) return false;
+    const whole = (element.textContent || "").trim().length;
+    return text.trim().length >= whole * 0.8;
+  }
+
   function codeBlock(pre, consumed, hint) {
     const code = pre.querySelector("code") || pre;
-    const raw = (code.textContent || "").replace(/\s+$/, "");
+    const raw = codeTextOf(code).replace(/^\n+|\s+$/g, "");
     if (!raw.trim()) return null;
     const language =
       detectLanguage(pre, code) || labelInside(pre) || hint || headerLanguage(pre, consumed) || "text";
@@ -346,7 +432,7 @@
         }
         if (child.nodeType !== 1) continue;
         const tag = child.tagName;
-        if (SKIP_TAGS.has(tag) || consumed.has(child)) continue;
+        if (SKIP_TAGS.has(tag) || consumed.has(child) || isHidden(child)) continue;
         if (child.classList && child.classList.contains("aix-select")) continue;
 
         if (tag === "PRE") {
@@ -374,6 +460,10 @@
           if (text) push({ type: "heading", level: Number(tag[1]), text });
         } else if (tag === "UL" || tag === "OL") {
           push(listBlock(child));
+        } else if (isCodeContainer(child)) {
+          // A wrapper whose text is one multi-line code sample: keep its lines.
+          push(codeBlock(child, consumed, pendingLanguage));
+          pendingLanguage = "";
         } else if (isDisplayMath(child)) {
           const tex = texOf(child);
           if (tex) push({ type: "formula", tex });
@@ -423,7 +513,9 @@
           out.push(block.text);
           break;
         case "list":
-          out.push(block.items.map((item) => `- ${item}`).join("\n"));
+          out.push(
+            block.items.map((item, index) => (block.ordered ? `${index + 1}. ${item}` : `- ${item}`)).join("\n")
+          );
           break;
         case "quote":
           out.push(block.text.split("\n").map((line) => `> ${line}`).join("\n"));
@@ -490,9 +582,18 @@
       }
     }
 
+    /* Prefer candidates that can state their own role. In the new layout the
+       role lives on the message unit, and a turn wrapper around it does not
+       carry one: without this rule the wrapper would win the outermost-only
+       filter below and merge a prompt and its answer into a single message.
+       The old layout is unaffected - its turn sections already resolve a role
+       from a descendant, so they are in this pool too. */
+    const withRole = candidates.filter((entry) => entry.role !== "unknown");
+    const pool = withRole.length ? withRole : candidates;
+
     // Keep the outermost candidate when one message container nests another.
-    const outer = candidates.filter(
-      (entry) => !candidates.some((other) => other !== entry && other.element.contains(entry.element))
+    const outer = pool.filter(
+      (entry) => !pool.some((other) => other !== entry && other.element.contains(entry.element))
     );
     outer.sort((a, b) =>
       a.element.compareDocumentPosition(b.element) & 4 /* DOCUMENT_POSITION_FOLLOWING */ ? -1 : 1
@@ -551,6 +652,30 @@
     return entries;
   }
 
+  /**
+   * What the adapters actually saw, for when nothing matched.
+   *
+   * Every one of these sites reshapes its DOM without warning, and a parser
+   * that can only say "no conversation detected" is undiagnosable from the
+   * outside. This is what lets the failure name the selector that missed.
+   */
+  function diagnose(doc, location_) {
+    const hostname = (location_ && location_.hostname) || (doc && doc.location && doc.location.hostname) || "";
+    const platform = platformFor(hostname);
+    const adapters = ADAPTERS[platform ? platform.id : "generic"];
+    const canQuery = Boolean(doc && typeof doc.querySelectorAll === "function");
+    const tried = adapters.map((adapter) => ({
+      selector: adapter.selector,
+      matches: canQuery ? doc.querySelectorAll(adapter.selector).length : 0
+    }));
+    return {
+      platform: platform ? platform.id : "unknown",
+      hostname,
+      tried,
+      matched: tried.reduce((total, entry) => total + entry.matches, 0)
+    };
+  }
+
   function cleanTitle(doc, platform) {
     const raw = ((doc && doc.title) || "").trim();
     if (raw) {
@@ -604,8 +729,10 @@
     parse,
     parsePage,
     findMessages,
+    diagnose,
     platformFor,
     normalizeRole,
+    roleFromKeySuffix,
     collectBlocks
   };
 })();

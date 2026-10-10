@@ -176,7 +176,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: false, error: "This conversation could not be prepared for export." });
     return false;
   }
-  if (JSON.stringify(chat).length > MAX_BYTES) {
+  // The cap is measured in bytes, not in string length: JSON.stringify counts
+  // UTF-16 code units, so a conversation full of emoji or CJK text can be three
+  // times its measured size and overflow the storage.session quota, which
+  // surfaces as a confusing write error instead of the honest "too large".
+  if (new TextEncoder().encode(JSON.stringify(chat)).byteLength > MAX_BYTES) {
     sendResponse({ ok: false, error: "This conversation is too large to export at once." });
     return false;
   }

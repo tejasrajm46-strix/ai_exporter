@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="64" viewBox="0 0 420 64" role="img" aria-labelledby="mw-title mw-desc">
+  <title id="mw-title">README made with beautify-github-readme</title>
+  <desc id="mw-desc">Signature badge: this README was designed with the beautify-github-readme skill, in the crimson and gold brand colours of AI Exporter.</desc>
+
+  <defs>
+    <linearGradient id="mw-brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B30036"/>
+      <stop offset="1" stop-color="#6E0021"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="420" height="64" rx="14" fill="url(#mw-brand)"/>
+  <g transform="translate(16 16) scale(1.333)" fill="none" stroke="#E8BE62" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>
+    <path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>
+  </g>
+  <text x="60" y="27" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="10.5" letter-spacing="1.8" fill="#F3D9A0">README MADE WITH</text>
+  <text x="60" y="47" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#FFFFFF">beautify-github-readme</text>
+  <path d="M348 32 H370" stroke="#E8BE62" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M364 26 L374 32 L364 38 Z" fill="#E8BE62"/>
+</svg>

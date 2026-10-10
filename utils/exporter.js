@@ -16,7 +16,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.2.0";
+  const VERSION = "0.3.0";
 
   /* ------------------------------------------------------------------ basics */
 
@@ -86,27 +86,48 @@
       "true false null undefined none nil").split(" "),
     identifiers: ("string number boolean object array list map set system out println " +
       "console print integer double float long char byte").split(" "),
-    sql: "select from where insert update delete join left right inner outer group order by limit values create".split(" ")
+    sql: "select from where insert update delete join left right inner outer group order by limit values create".split(" "),
+    cfamily: ("int void struct union typedef using namespace include define template typename bool char short " +
+      "double float unsigned signed sizeof nullptr std cin cout cerr endl NULL delete new public private " +
+      "protected virtual override const static inline").split(" ")
   };
+
+  // Languages that share C-style syntax: // and /* */ comments, C/C++ keywords.
+  const C_LIKE = /^(c|cc|cpp|c\+\+|cxx|h|hpp|c#|cs|csharp|java|js|javascript|jsx|ts|typescript|tsx|go|golang|rust|rs|swift|kotlin|scala|dart|php|json)$/;
+  const SQL_LIKE = /^(sql|lua|haskell|hs)$/;
 
   function keywordSet(language) {
     const lang = String(language || "").toLowerCase();
     const words = new Set(KEYWORDS.common);
     if (lang.includes("sql")) for (const word of KEYWORDS.sql) words.add(word);
+    if (C_LIKE.test(lang)) for (const word of KEYWORDS.cfamily) words.add(word);
     if (!lang.includes("py")) for (const word of KEYWORDS.identifiers) words.add(word);
     return words;
   }
 
-  const TOKEN_PATTERN =
-    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*|--[^\n]*)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b\d[\w.]*\b)|(\b[A-Za-z_$][\w$]*\b)/g;
+  // Only the comment syntax differs by language: `#` is a comment in Python and
+  // shell, but `#include` is not one in C, and `--` is a comment only in SQL.
+  // Group 1 is the comment; the string, number and identifier groups follow.
+  const TOKEN_TAIL =
+    /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b\d[\w.]*\b)|(\b[A-Za-z_$][\w$]*\b)/.source;
+
+  function tokenPatternFor(language) {
+    const lang = String(language || "").toLowerCase();
+    const comment = C_LIKE.test(lang)
+      ? /\/\/[^\n]*|\/\*[\s\S]*?\*\//.source
+      : SQL_LIKE.test(lang)
+        ? /--[^\n]*|\/\*[\s\S]*?\*\//.source
+        : /#[^\n]*/.source;
+    return new RegExp(`(${comment})|${TOKEN_TAIL}`, "g");
+  }
 
   function highlight(code, language) {
     const words = keywordSet(language);
+    const tokens = tokenPatternFor(language);
     let out = "";
     let last = 0;
     let match;
-    TOKEN_PATTERN.lastIndex = 0;
-    while ((match = TOKEN_PATTERN.exec(code)) !== null) {
+    while ((match = tokens.exec(code)) !== null) {
       out += escapeHtml(code.slice(last, match.index));
       const raw = match[0];
       if (match[1]) out += `<span class="tok-com">${escapeHtml(raw)}</span>`;
@@ -319,6 +340,10 @@ html[data-theme="print"] .cover-logo { background: var(--ink); color: var(--pape
 .code-head .icon { width: 15px; height: 15px; stroke-width: 2; }
 .code pre { margin: 0; padding: 12px 14px; color: var(--code-ink); font-family: var(--mono); font-size: 9.5pt;
   line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* ordered lists keep their numbers: the decorative dots are only for bullets */
+.list--ordered { list-style: decimal; padding-left: 22px; }
+.list--ordered li { padding-left: 0; }
+.list--ordered li::before { display: none; }
 /* the OUTPUT panel is tinted apart from the code panel, in every mode */
 .code--output .code-head { background: var(--out-head-bg); color: var(--out-head-ink); }
 .code--output pre { background: var(--out-bg); }
@@ -412,6 +437,13 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
     const items = block.items
       .map((item) => `<li>${checks ? '<span class="tick" aria-hidden="true"></span>' : ""}${formatInline(item)}</li>`)
       .join("");
+    /* The parser records whether the source element was <ol> or <ul>. Keep the
+       shape: a numbered list flattened to dots loses the step order that was
+       the point of the list. Tick cards stay <ul> - there the marker is
+       replaced on purpose. */
+    if (block.ordered && !checks) {
+      return `<ol class="list list--ordered">${items}</ol>`;
+    }
     return `<ul class="list${checks ? " list--checks" : ""}">${items}</ul>`;
   }
 
@@ -433,13 +465,32 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--accent-sof
     return `<table class="grid">${head}<tbody>${rows}</tbody></table>`;
   }
 
+  /**
+   * Image sources that may be embedded: a raster data URI, or an https URL.
+   * Three deliberate exclusions, all of them things a page can put in an
+   * <img src> and the old single /^data:image\// test waved through:
+   *   - data:image/svg+xml is a whole document with scripting and external
+   *     references. It is inert inside an <img>, but this file is also opened
+   *     in viewers and re-imported into Word/Docs, which do not sandbox it.
+   *   - plain http is blocked as mixed content from a chrome-extension:/blob:
+   *     document anyway, so it would only ever render as a broken image.
+   *   - javascript:/blob:/file: never render at all.
+   */
+  const SAFE_IMAGE_SRC = /^(?:data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=\s]+|https:\/\/[^\s"'<>]+)$/i;
+
+  function safeImageSrc(value) {
+    const src = String(value == null ? "" : value);
+    return SAFE_IMAGE_SRC.test(src) ? src : "";
+  }
+
   function renderImage(block, state) {
-    const src = String(block.src || "");
-    const safe = /^data:image\//i.test(src) || /^https?:\/\//i.test(src) ? src : "";
+    const safe = safeImageSrc(block.src);
     const caption = block.alt || "Image from the conversation";
     if (!safe) return `<div class="figure figure--placeholder">Image not embedded: ${escapeHtml(caption)}</div>`;
     state.figures += 1;
-    return `<figure class="figure"><img src="${escapeHtml(safe)}" alt="${escapeHtml(block.alt || "")}">
+    // referrerpolicy: a remote image must not tell its host where the exported
+    // document was opened from.
+    return `<figure class="figure"><img src="${escapeHtml(safe)}" alt="${escapeHtml(block.alt || "")}" referrerpolicy="no-referrer">
 <figcaption>Fig. ${state.figures}: ${escapeHtml(caption)}</figcaption></figure>`;
   }
 
@@ -575,6 +626,14 @@ ${renderBlocks(section.blocks, settings, state)}</article>`;
 <html lang="en" data-theme="${settings.theme}">
 <head>
 <meta charset="utf-8">
+<!-- The exported document has no scripts by construction, and this says so
+     where the browser can enforce it. It is the second layer, not the first:
+     the preview frame is deliberately same-origin with the extension page so
+     the view can measure and print it, which means a failure of the escaping
+     above would otherwise run page content with extension privileges. It also
+     covers the two consumers with no sandbox at all - 'Open in tab' and the
+     saved .html file opened from disk. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="color-scheme" content="${settings.theme}">
 <title>${escapeHtml(chat.title || "AI conversation")}</title>
 <style>${css}</style>
@@ -598,7 +657,9 @@ ${body}
           case "paragraph":
             return block.text;
           case "list":
-            return block.items.map((item) => `- ${item}`).join("\n");
+            return block.items
+              .map((item, index) => (block.ordered ? `${index + 1}. ${item}` : `- ${item}`))
+              .join("\n");
           case "quote":
             return block.text.split("\n").map((line) => `> ${line}`).join("\n");
           case "code":
@@ -612,8 +673,14 @@ ${body}
             for (const row of block.rows || []) lines.push(`| ${row.join(" | ")} |`);
             return lines.join("\n");
           }
-          case "image":
-            return `![${block.alt || "image"}](${block.src})`;
+          case "image": {
+            /* A markdown image is a link, so the alt text is a place page content
+               could otherwise inject its own link syntax into the file, and the
+               src a place a javascript: target could hide. */
+            const alt = String(block.alt || "image").replace(/[[\]]/g, " ");
+            const src = safeImageSrc(block.src);
+            return src ? `![${alt}](${src})` : `[image: ${alt}]`;
+          }
           case "formula":
             return `$$\n${block.tex}\n$$`;
           case "divider":
@@ -664,7 +731,12 @@ ${body}
             lines.push(plainInline(block.text), "");
             break;
           case "list":
-            lines.push(...block.items.map((item) => `  - ${plainInline(item)}`), "");
+            lines.push(
+              ...block.items.map(
+                (item, index) => `  ${block.ordered ? `${index + 1}.` : "-"} ${plainInline(item)}`
+              ),
+              ""
+            );
             break;
           case "quote":
             lines.push(...plainInline(block.text).split("\n").map((line) => `  > ${line}`), "");
@@ -759,6 +831,7 @@ div.WordSection1 { page: WordSection1; }
 .list li { padding-left: 0; }
 .list li::before { display: none; }
 .list--checks { list-style: none; }
+ol.list, .list--ordered { list-style: decimal; padding-left: 22px; }
 .sub, .code-head, .meta-row, .turn-head { display: block; }
 .icon, .cover-logo, .cover-art { display: none; }`;
     return `<!doctype html>
@@ -867,13 +940,22 @@ ${body}
           y += 8;
           addText(block.text, { font: PNG_FONTS.sub, color: theme.ink, gap: 8 });
         } else if (block.type === "list") {
-          for (const item of block.items) {
-            const indent = PAD + 26;
-            nodes.push({ kind: "bullet", x: PAD + 8, y, color: theme.accent });
-            const lines = wrap(plainInline(item), PNG_FONTS.body, width - 26);
+          /* An ordered list prints its number in the marker column; the wider
+             gutter leaves room for double-digit steps. */
+          const indent = PAD + (block.ordered ? 36 : 26);
+          block.items.forEach((item, index) => {
+            if (block.ordered) {
+              nodes.push({
+                kind: "text", x: PAD + 6, y, lines: [`${index + 1}.`],
+                font: PNG_FONTS.meta, color: theme.accent, lineHeight: 30
+              });
+            } else {
+              nodes.push({ kind: "bullet", x: PAD + 8, y, color: theme.accent });
+            }
+            const lines = wrap(plainInline(item), PNG_FONTS.body, width - (indent - PAD));
             nodes.push({ kind: "text", x: indent, y, lines, font: PNG_FONTS.body, color: theme.ink, lineHeight: 30 });
             y += lines.length * 30 + 8;
-          }
+          });
           y += 6;
         } else if (block.type === "code") {
           const lines = [];

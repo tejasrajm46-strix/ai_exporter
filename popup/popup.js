@@ -85,6 +85,35 @@
     return chrome.tabs.sendMessage(tabId, message);
   }
 
+  /**
+   * A tab that was already open when the extension was installed, reloaded or
+   * updated has no content script in it, and chrome.tabs.sendMessage then fails
+   * with "Could not establish connection". The manifest asks for the scripting
+   * permission, so the popup injects the same two files on demand: the first
+   * click on the toolbar icon works, instead of only telling the user to reload
+   * the tab and try again.
+   */
+  async function ensureContentScript(tabId) {
+    try {
+      const response = await send(tabId, { type: "PING" });
+      if (response && response.injected) return true;
+    } catch {
+      // nothing listening yet - inject below
+    }
+    try {
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["content/content.css"] });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["utils/parser.js", "content/content.js"]
+      });
+      const response = await send(tabId, { type: "PING" });
+      return Boolean(response && response.injected);
+    } catch {
+      // pages outside the host permissions refuse injection, and that is fine
+      return false;
+    }
+  }
+
   async function refresh() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || tab.id === undefined || !tab.url) {
@@ -111,12 +140,29 @@
       else if (key === "docMode") control.value = settings.docMode === "bw" ? "bw" : "color";
     }
 
+    if (!(await ensureContentScript(tab.id))) {
+      ui.name.textContent = "Page not ready";
+      ui.meta.textContent = "Content script unavailable";
+      setStatus("This page does not let AI Exporter run. Reload the tab and try again.", "error");
+      setFormatsEnabled(false);
+      ui.selection.disabled = true;
+      return;
+    }
+
     try {
       const response = await send(tab.id, { type: "GET_PAGE_STATE" });
       if (!response || !response.ok || !response.chat || !response.chat.messages.length) {
         ui.name.textContent = "No conversation detected";
         ui.meta.textContent = "Nothing parsed on this page";
-        setStatus("Could not detect chat on this page. Please refresh and try again.", "error");
+        const diagnostics = response && response.diagnostics;
+        setStatus(
+          diagnostics
+            ? `Could not read this conversation: ${diagnostics.matched} of ${diagnostics.tried.length} ` +
+              `${diagnostics.platform} selectors matched. Refresh the tab and try again; if it stays like ` +
+              `this, ${diagnostics.platform === "unknown" ? "this site" : diagnostics.platform} has changed its page layout.`
+            : "Could not detect chat on this page. Please refresh and try again.",
+          "error"
+        );
         setFormatsEnabled(false);
         ui.selection.disabled = true;
         return;

@@ -1,4 +1,14 @@
-*.log
-node_modules/
+# OS junk
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Logs and dependencies
+*.log
+node_modules/
+
+# Local tooling
+.freebuff/
+
+# Release artifacts (published via GitHub Releases, not the repo)
+*.zip

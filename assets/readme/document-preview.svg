@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="aix-doc-title aix-doc-desc">
+  <title id="aix-doc-title">What an AI Exporter document looks like</title>
+  <desc id="aix-doc-desc">A cover page with metadata and cover waves beside a content page with turn chips, a section bar, a syntax-highlighted code panel and an amber note callout — every panel rendered with the palettes that ship inside the extension.</desc>
+
+  <defs>
+    <linearGradient id="aix-brand2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B30036"/>
+      <stop offset="1" stop-color="#6E0021"/>
+    </linearGradient>
+    <clipPath id="aix-cover-clip"><rect x="758" y="44" width="176" height="272" rx="10"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="360" rx="24" fill="#0B1220"/>
+
+  <!-- ============ left: heading + highlights ============ -->
+  <text x="56" y="64" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="16" letter-spacing="2.5" fill="#7E93B4">THE RESULT</text>
+  <text x="56" y="112" font-family="Georgia, 'Times New Roman', serif" font-size="36" font-weight="700" fill="#F1F5F9">A real document,</text>
+  <text x="56" y="152" font-family="Georgia, 'Times New Roman', serif" font-size="36" font-weight="700" fill="#F1F5F9">not a screen dump.</text>
+
+  <circle cx="62" cy="190" r="4" fill="#D92754"/>
+  <text x="76" y="196" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" fill="#C7D2E4">Cover page with platform, model and counts</text>
+  <circle cx="62" cy="220" r="4" fill="#8FA8FF"/>
+  <text x="76" y="226" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" fill="#C7D2E4">Light, Dark and print-safe themes</text>
+  <circle cx="62" cy="250" r="4" fill="#E8BE62"/>
+  <text x="76" y="256" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" fill="#C7D2E4">Highlighted code and OUTPUT panels</text>
+  <circle cx="62" cy="280" r="4" fill="#34D399"/>
+  <text x="76" y="286" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" fill="#C7D2E4">Callouts, tables, LaTeX, image captions</text>
+
+  <text x="56" y="330" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="15" fill="#7E93B4">every panel above ships inside the extension</text>
+
+  <!-- ============ page 1: cover ============ -->
+  <rect x="766" y="54" width="176" height="272" rx="10" fill="#060B16" opacity="0.55"/>
+  <rect x="758" y="44" width="176" height="272" rx="10" fill="#FFFFFF" stroke="#D8E0EC" stroke-width="1.5"/>
+  <rect x="829" y="60" width="34" height="34" rx="9" fill="url(#aix-brand2)"/>
+  <g transform="translate(829 60) scale(1.4167)" fill="none" stroke="#E8BE62" stroke-width="1.3" stroke-linejoin="round">
+    <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>
+    <path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>
+  </g>
+  <rect x="806" y="104" width="80" height="6" rx="3" fill="#94A3B8"/>
+  <rect x="826" y="117" width="40" height="2.5" fill="#4F46E5"/>
+  <rect x="786" y="130" width="120" height="8" rx="4" fill="#1F2937"/>
+  <rect x="802" y="144" width="88" height="8" rx="4" fill="#374151"/>
+  <circle cx="784" cy="168" r="3.5" fill="#4F46E5"/>
+  <rect x="794" y="165" width="100" height="5.5" rx="2.75" fill="#6B7280"/>
+  <circle cx="784" cy="186" r="3.5" fill="#4F46E5"/>
+  <rect x="794" y="183" width="88" height="5.5" rx="2.75" fill="#6B7280"/>
+  <circle cx="784" cy="204" r="3.5" fill="#4F46E5"/>
+  <rect x="794" y="201" width="96" height="5.5" rx="2.75" fill="#6B7280"/>
+  <circle cx="784" cy="222" r="3.5" fill="#4F46E5"/>
+  <rect x="794" y="219" width="76" height="5.5" rx="2.75" fill="#6B7280"/>
+  <g clip-path="url(#aix-cover-clip)">
+    <path d="M758 298 C 784 280, 810 306, 838 290 S 894 300, 934 284 L934 316 L758 316 Z" fill="#C7D2FE" opacity="0.8"/>
+    <path d="M758 305 C 790 290, 820 312, 856 296 S 916 304, 934 292 L934 316 L758 316 Z" fill="#A5B4FC" opacity="0.55"/>
+  </g>
+
+  <!-- ============ page 2: content ============ -->
+  <rect x="976" y="54" width="176" height="272" rx="10" fill="#060B16" opacity="0.55"/>
+  <rect x="968" y="44" width="176" height="272" rx="10" fill="#FFFFFF" stroke="#D8E0EC" stroke-width="1.5"/>
+  <!-- turn head -->
+  <rect x="982" y="58" width="50" height="15" rx="7.5" fill="#EEF2FF"/>
+  <text x="990" y="69" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="9.5" font-weight="700" letter-spacing="1" fill="#4338CA">USER</text>
+  <rect x="1078" y="63" width="52" height="5" rx="2.5" fill="#CBD5E1"/>
+  <!-- paragraph -->
+  <rect x="982" y="84" width="148" height="5" rx="2.5" fill="#475569" opacity="0.85"/>
+  <rect x="982" y="94" width="140" height="5" rx="2.5" fill="#475569" opacity="0.7"/>
+  <rect x="982" y="104" width="108" height="5" rx="2.5" fill="#475569" opacity="0.7"/>
+  <!-- section bar -->
+  <rect x="982" y="120" width="148" height="17" rx="5" fill="#EEF2FF"/>
+  <circle cx="991" cy="128.5" r="2.5" fill="#4F46E5"/>
+  <text x="999" y="132.5" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="700" letter-spacing="0.8" fill="#3730A3">KEY POINTS</text>
+  <!-- tick list, alternating bullet colours -->
+  <circle cx="988" cy="150" r="2.5" fill="#7C3AED"/>
+  <rect x="996" y="147" width="124" height="4.5" rx="2.25" fill="#475569" opacity="0.8"/>
+  <circle cx="988" cy="162" r="2.5" fill="#2563EB"/>
+  <rect x="996" y="159" width="132" height="4.5" rx="2.25" fill="#475569" opacity="0.7"/>
+  <circle cx="988" cy="174" r="2.5" fill="#7C3AED"/>
+  <rect x="996" y="171" width="100" height="4.5" rx="2.25" fill="#475569" opacity="0.7"/>
+  <!-- code panel -->
+  <rect x="982" y="188" width="148" height="50" rx="6" fill="#F8FAFC" stroke="#DBEAFE" stroke-width="1"/>
+  <path d="M982 194 a6 6 0 0 1 6 -6 h136 a6 6 0 0 1 6 6 v8 h-148 z" fill="#DBEAFE"/>
+  <text x="990" y="199.5" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="8.5" font-weight="700" letter-spacing="1" fill="#1D4ED8">PYTHON</text>
+  <rect x="990" y="210" width="80" height="4.5" rx="2.25" fill="#7C3AED"/>
+  <rect x="990" y="219" width="100" height="4.5" rx="2.25" fill="#15803D"/>
+  <rect x="990" y="228" width="64" height="4.5" rx="2.25" fill="#B45309"/>
+  <!-- note callout -->
+  <rect x="982" y="246" width="148" height="28" rx="6" fill="#FEF6E4" stroke="#F0B429" stroke-width="1.5"/>
+  <text x="992" y="257.5" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="800" letter-spacing="0.6" fill="#B45309">NOTE</text>
+  <rect x="992" y="262" width="96" height="4" rx="2" fill="#92400E" opacity="0.8"/>
+</svg>

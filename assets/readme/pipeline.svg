@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="aix-flow-title aix-flow-desc">
+  <title id="aix-flow-title">How AI Exporter works</title>
+  <desc id="aix-flow-desc">Four steps, zero network: site-aware parsing, structured blocks, themed rendering, then saving by download or print — all on the local machine.</desc>
+
+  <rect width="1200" height="300" rx="24" fill="#0B1220"/>
+
+  <text x="56" y="56" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="16" letter-spacing="2.5" fill="#7E93B4">HOW IT WORKS</text>
+  <text x="1144" y="56" text-anchor="end" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="15" fill="#7E93B4">runs entirely offline · nothing is uploaded</text>
+  <text x="56" y="96" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#F1F5F9">Four steps. Zero network.</text>
+
+  <!-- step 1 -->
+  <g>
+    <rect x="56" y="128" width="250" height="128" rx="14" fill="#111C31" stroke="#223252" stroke-width="1.5"/>
+    <text x="76" y="158" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#D92754">01</text>
+    <text x="76" y="190" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="21" font-weight="700" fill="#F1F5F9">Parse</text>
+    <text x="76" y="216" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">one adapter per site</text>
+    <text x="76" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">roles and blocks inferred</text>
+  </g>
+  <path d="M310 192 H326" stroke="#D92754" stroke-width="3" stroke-linecap="round"/>
+  <path d="M324 185 L334 192 L324 199 Z" fill="#D92754"/>
+
+  <!-- step 2 -->
+  <g>
+    <rect x="336" y="128" width="250" height="128" rx="14" fill="#111C31" stroke="#223252" stroke-width="1.5"/>
+    <text x="356" y="158" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#D92754">02</text>
+    <text x="356" y="190" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="21" font-weight="700" fill="#F1F5F9">Structure</text>
+    <text x="356" y="216" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">headings · code · tables</text>
+    <text x="356" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">lists · quotes · math</text>
+  </g>
+  <path d="M590 192 H606" stroke="#D92754" stroke-width="3" stroke-linecap="round"/>
+  <path d="M604 185 L614 192 L604 199 Z" fill="#D92754"/>
+
+  <!-- step 3 -->
+  <g>
+    <rect x="616" y="128" width="250" height="128" rx="14" fill="#111C31" stroke="#223252" stroke-width="1.5"/>
+    <text x="636" y="158" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#D92754">03</text>
+    <text x="636" y="190" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="21" font-weight="700" fill="#F1F5F9">Render</text>
+    <text x="636" y="216" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">3 themes · highlighting</text>
+    <text x="636" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">cover · callouts · cards</text>
+  </g>
+  <path d="M870 192 H886" stroke="#D92754" stroke-width="3" stroke-linecap="round"/>
+  <path d="M884 185 L894 192 L884 199 Z" fill="#D92754"/>
+
+  <!-- step 4 -->
+  <g>
+    <rect x="896" y="128" width="250" height="128" rx="14" fill="#111C31" stroke="#223252" stroke-width="1.5"/>
+    <text x="916" y="158" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#D92754">04</text>
+    <text x="916" y="190" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" font-size="21" font-weight="700" fill="#F1F5F9">Save</text>
+    <text x="916" y="216" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">download or print</text>
+    <text x="916" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="14" fill="#8CA2C0">PDF via browser print</text>
+  </g>
+
+  <text x="600" y="286" text-anchor="middle" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="15" fill="#5F7396">parse → structure → render → save, without a single request leaving the tab</text>
+</svg>

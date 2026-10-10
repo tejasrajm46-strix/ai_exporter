@@ -34,6 +34,7 @@
   let chat = null;
   const included = new Set(); // indexes of chat.messages that stay in the export
   let renderTimer = null;
+  let autoPrint = false; // set when the export was requested as PDF
 
   function setStatus(message, state = "") {
     const status = byId("status");
@@ -113,6 +114,15 @@
       resetStage();
       setTimeout(resetStage, 120);
     });
+    if (autoPrint) {
+      /* Exporting to PDF means one click in the popup, so the print dialog
+         opens by itself once the document has painted. It is armed for the
+         first paint only: the picker re-renders on every change, and the dialog
+         must not reappear each time. printPdf is a declaration, so calling it
+         from here is safe even though it is defined further down. */
+      autoPrint = false;
+      setTimeout(printPdf, 200);
+    }
   });
   window.addEventListener("resize", applyScale);
 
@@ -365,6 +375,7 @@
       chat.platformLabel || "unknown site"
     }${chat.model ? ` - ${chat.model}` : ""}`;
 
+    autoPrint = options.format === "pdf";
     buildPicker();
     updateSelectionUi();
     render(true);
@@ -373,7 +384,7 @@
       setStatus(`Preview ready. Downloading ${exporter.FORMAT_LABELS[options.format] || options.format}...`);
       download(options.format);
     } else if (options.format === "pdf") {
-      setStatus("Preview ready. Untick anything you do not want, then choose 'Save as PDF'.");
+      setStatus("Preview ready. Opening the print dialog - choose 'Save as PDF' and untick 'Headers and footers'.");
     } else {
       setStatus("Preview ready. Untick anything you do not want, then save as PDF or download another format.");
     }

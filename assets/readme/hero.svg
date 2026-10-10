@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="aix-hero-title aix-hero-desc">
+  <title id="aix-hero-title">AI Exporter — export AI chats as beautiful documents, locally</title>
+  <desc id="aix-hero-desc">AI Exporter turns ChatGPT, Claude, Gemini and DeepSeek conversations into polished PDF, Markdown, text, Word, PNG and JSON documents without the data ever leaving your machine.</desc>
+
+  <defs>
+    <linearGradient id="aix-brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B30036"/>
+      <stop offset="1" stop-color="#6E0021"/>
+    </linearGradient>
+    <clipPath id="aix-sheet-clip">
+      <rect x="920" y="48" width="220" height="290" rx="12"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="#0B1220"/>
+
+  <!-- ============ left: title block ============ -->
+  <g transform="translate(56 54)">
+    <rect width="46" height="46" rx="12" fill="url(#aix-brand)"/>
+    <g transform="translate(4 4) scale(1.583)" fill="none" stroke="#E8BE62" stroke-width="1.6" stroke-linejoin="round">
+      <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>
+      <path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>
+    </g>
+    <text x="64" y="30" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="15" letter-spacing="2.5" fill="#7E93B4">CHROME EXTENSION · MANIFEST V3</text>
+  </g>
+
+  <text x="56" y="168" font-family="Georgia, 'Times New Roman', serif" font-size="66" font-weight="700" fill="#F3F6FB">AI Exporter</text>
+  <rect x="56" y="192" width="76" height="4" rx="2" fill="#D92754"/>
+
+  <text x="56" y="234" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="23" fill="#C7D2E4">One click turns any ChatGPT, Claude, Gemini or</text>
+  <text x="56" y="266" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="23" fill="#C7D2E4">DeepSeek chat into a document worth keeping.</text>
+
+  <text x="56" y="300" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="17" letter-spacing="1" fill="#8FA8FF">PDF · MARKDOWN · TXT · DOCX · PNG · JSON</text>
+  <text x="56" y="328" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace" font-size="15" fill="#7E93B4">v0.3.0 · MIT · no servers, no accounts, no telemetry</text>
+
+  <!-- ============ right: chat card ============ -->
+  <g id="chat-card">
+    <rect x="660" y="64" width="190" height="252" rx="14" fill="#111C31" stroke="#223252" stroke-width="1.5"/>
+    <circle cx="680" cy="82" r="4" fill="#3A4F73"/>
+    <circle cx="692" cy="82" r="4" fill="#3A4F73"/>
+    <circle cx="704" cy="82" r="4" fill="#3A4F73"/>
+    <rect x="724" y="79" width="76" height="6" rx="3" fill="#2A3D61"/>
+    <line x1="661" x2="849" y1="96" y2="96" stroke="#1B2A45" stroke-width="1"/>
+    <!-- user bubble -->
+    <rect x="742" y="108" width="92" height="36" rx="10" fill="#24365C"/>
+    <rect x="752" y="118" width="54" height="5" rx="2.5" fill="#8FA8FF" opacity="0.75"/>
+    <rect x="752" y="128" width="70" height="5" rx="2.5" fill="#8FA8FF" opacity="0.45"/>
+    <!-- assistant bubble -->
+    <rect x="676" y="156" width="158" height="46" rx="10" fill="#1A2A49"/>
+    <rect x="686" y="166" width="122" height="5" rx="2.5" fill="#C7D2E4" opacity="0.7"/>
+    <rect x="686" y="176" width="134" height="5" rx="2.5" fill="#C7D2E4" opacity="0.45"/>
+    <rect x="686" y="186" width="92" height="5" rx="2.5" fill="#C7D2E4" opacity="0.45"/>
+    <!-- code panel, tokens straight from the dark export theme -->
+    <rect x="676" y="214" width="158" height="66" rx="8" fill="#0A1426" stroke="#223252" stroke-width="1"/>
+    <path d="M676 222 a8 8 0 0 1 8 -8 h142 a8 8 0 0 1 8 8 v10 h-158 z" fill="#16264A"/>
+    <text x="688" y="228" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" letter-spacing="1.5" fill="#9FC1FF">PYTHON</text>
+    <rect x="688" y="240" width="96" height="5" rx="2.5" fill="#C792EA"/>
+    <rect x="792" y="240" width="30" height="5" rx="2.5" fill="#60A5FA"/>
+    <rect x="688" y="250" width="120" height="5" rx="2.5" fill="#86EFAC"/>
+    <rect x="688" y="260" width="78" height="5" rx="2.5" fill="#FBBF24"/>
+  </g>
+
+  <!-- arrow: chat becomes a document -->
+  <path d="M856 190 H888" stroke="#D92754" stroke-width="3" stroke-linecap="round"/>
+  <path d="M886 182 L900 190 L886 198 Z" fill="#D92754"/>
+
+  <!-- ============ right: exported document ============ -->
+  <g id="document-stack">
+    <rect x="930" y="60" width="220" height="286" rx="12" fill="#0F1930" stroke="#223252" stroke-width="1.5"/>
+    <rect x="920" y="48" width="220" height="290" rx="12" fill="#F6F8FC" stroke="#D8E0EC" stroke-width="1.5"/>
+    <!-- cover mark -->
+    <rect x="1010" y="64" width="40" height="40" rx="11" fill="url(#aix-brand)"/>
+    <g transform="translate(1010 64) scale(1.667)" fill="none" stroke="#E8BE62" stroke-width="1.1" stroke-linejoin="round">
+      <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>
+      <path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>
+    </g>
+    <rect x="990" y="114" width="80" height="6" rx="3" fill="#94A3B8"/>
+    <rect x="1010" y="128" width="40" height="2.5" fill="#4F46E5"/>
+    <rect x="956" y="142" width="148" height="9" rx="4.5" fill="#1F2937"/>
+    <rect x="976" y="158" width="108" height="9" rx="4.5" fill="#374151"/>
+    <!-- meta rows -->
+    <circle cx="948" cy="182" r="4" fill="#4F46E5"/>
+    <rect x="960" y="179" width="104" height="6" rx="3" fill="#94A3B8" opacity="0.85"/>
+    <circle cx="948" cy="200" r="4" fill="#4F46E5"/>
+    <rect x="960" y="197" width="92" height="6" rx="3" fill="#94A3B8" opacity="0.7"/>
+    <circle cx="948" cy="218" r="4" fill="#4F46E5"/>
+    <rect x="960" y="215" width="112" height="6" rx="3" fill="#94A3B8" opacity="0.85"/>
+    <circle cx="948" cy="236" r="4" fill="#4F46E5"/>
+    <rect x="960" y="233" width="84" height="6" rx="3" fill="#94A3B8" opacity="0.7"/>
+    <!-- format chips -->
+    <rect x="948" y="256" width="44" height="22" rx="11" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
+    <text x="970" y="271" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#4338CA">PDF</text>
+    <rect x="1000" y="256" width="56" height="22" rx="11" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
+    <text x="1028" y="271" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#4338CA">DOCX</text>
+    <rect x="1064" y="256" width="50" height="22" rx="11" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
+    <text x="1089" y="271" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#4338CA">PNG</text>
+    <!-- cover waves, straight from the exporter's cover art -->
+    <g clip-path="url(#aix-sheet-clip)">
+      <path d="M920 316 C 950 292, 984 330, 1018 308 S 1086 322, 1140 298 L1140 338 L920 338 Z" fill="#C7D2FE" opacity="0.8"/>
+      <path d="M920 326 C 956 306, 992 342, 1034 320 S 1104 330, 1140 312 L1140 338 L920 338 Z" fill="#A5B4FC" opacity="0.55"/>
+    </g>
+  </g>
+</svg>

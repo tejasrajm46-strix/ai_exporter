@@ -1,0 +1,10 @@
+# Local scratch: browser harnesses, generated PDFs/PNGs/DOCX, Chrome profiles,
+# server and save logs. Everything here is reproducible and machine-specific.
+.tmp/
+
+# Tool metadata (Freebuff project marker), not part of the extension
+.freebuff/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Exporter — export checks</title>
+  <style>
+    :root { font-family: "Segoe UI", Arial, sans-serif; color: #172033; background: #f5f7fb; }
+    body { max-width: 1100px; margin: 32px auto; padding: 0 24px 32px; }
+    h1 { margin-bottom: 8px; } p { line-height: 1.6; }
+    nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+    button, a { font: inherit; }
+    nav button, nav a { display: inline-block; padding: 9px 14px; background: #fff; color: #273c8f; border: 1px solid #ccd3e2; border-radius: 6px; text-decoration: none; cursor: pointer; }
+    li { padding: 6px 0; } .pass { color: #126738; } .fail { color: #b42318; }
+    #summary { font-weight: 600; } #interactive { width: 100%; height: 840px; border: 1px solid #ccd3e2; background: #fff; }
+    #document { width: 100%; height: 850px; border: 1px solid #ccd3e2; background: #fff; }
+    pre { background: #fff; padding: 18px; overflow: auto; border: 1px solid #ccd3e2; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>AI Exporter — export checks</h1>
+  <p>Synthetic data only. These checks use the real parser and exporter. The interactive preview uses the real controller with a local Chrome API stub; it does not verify Chrome permissions or actual extension storage.</p>
+  <p id="summary" role="status">Running checks…</p>
+  <ol id="results"></ol>
+  <nav aria-label="Sample export formats">
+    <button type="button" id="light">Light PDF layout</button>
+    <button type="button" id="dark">Dark PDF layout</button>
+    <button type="button" id="print">Printable layout</button>
+    <button type="button" id="markdown">Markdown source</button>
+    <button type="button" id="download-docx">Download Word (.docx) sample</button>
+    <button type="button" id="download-md">Download Markdown sample</button>
+  </nav>
+  <h2>Document sample</h2>
+  <iframe id="document" title="Document alignment and text-box sample" sandbox="allow-same-origin allow-modals"></iframe>
+  <pre id="markdown-source" hidden></pre>
+  <h2>Interactive export preview</h2>
+  <p>Try the format cards, message checkboxes, theme controls, filename, image and remote-image options, and downloads. All content is synthetic.</p>
+  <iframe id="interactive" title="Real export controller with synthetic data"></iframe>
+  <script src="utils/parser.js"></script>
+  <script src="utils/document-theme.js"></script>
+  <script src="utils/mcq.js"></script>
+  <script src="utils/exporter.js"></script>
+  <script src="utils/docx.js"></script>
+  <script src="selftest.js"></script>
+</body>
+</html>

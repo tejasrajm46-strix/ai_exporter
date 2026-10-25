@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>AI Exporter</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+      <symbol id="i-select" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l2.6 2.5L16 9.5"/></symbol>
+      <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M9 13h1.6a1.4 1.4 0 0 1 0 2.8H9V13zm0 2.8V19"/><path d="M13.5 13v6M13.5 13h2M13.5 16h1.6"/></symbol>
+      <symbol id="i-markdown" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M6.5 15.5v-6l2.5 3 2.5-3v6"/><path d="M15 9.5v6M12.8 13.2 15 15.5l2.2-2.3"/></symbol>
+      <symbol id="i-txt" viewBox="0 0 24 24"><path d="M4 6h16M4 11h16M4 16h9"/></symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M8.5 13h7M8.5 17h4"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
+      <symbol id="i-json" viewBox="0 0 24 24"><path d="M9 4C6.8 4 7 6.4 7 8c0 2-2 2-2 2s2 0 2 2c0 1.6-.2 4 2 4"/><path d="M15 4c2.2 0 2 2.4 2 4 0 2 2 2 2 2s-2 0-2 2c0 1.6.2 4-2 4"/></symbol>
+      <symbol id="i-html" viewBox="0 0 24 24"><path d="M8.5 8 4.5 12l4 4M15.5 8l4 4-4 4M13.5 6l-3 12"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.5 4.5l1.4 1.4M18.1 18.1l1.4 1.4M2 12h2M20 12h2M4.5 19.5l1.4-1.4M18.1 5.9l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+    </svg>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <span class="brand-mark" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+        <span class="brand-copy">
+          <h1>AI Exporter</h1>
+          <p>Export your conversation, your way</p>
+        </span>
+        <span class="version">0.9.0</span>
+      </header>
+
+      <section class="conversation" aria-labelledby="conversation-title">
+        <div class="section-heading">
+          <h2 id="conversation-title">Conversation</h2>
+          <span class="site-indicator" id="site-indicator" aria-hidden="true"></span>
+        </div>
+        <p class="conversation-name" id="conversation-name">Checking this page...</p>
+        <p class="conversation-meta" id="conversation-meta">Waiting for page detection</p>
+        <p class="status-message" id="status-message" role="status" aria-live="polite">
+          Open an AI conversation to get started.
+        </p>
+      </section>
+
+      <section class="block" aria-labelledby="scope-title">
+        <div class="section-heading">
+          <h2 id="scope-title">What to export</h2>
+        </div>
+        <div class="option-list" role="radiogroup" aria-labelledby="scope-title">
+          <label class="option" for="scope-entire">
+            <input type="radio" id="scope-entire" name="scope" value="entire" checked>
+            <span class="option-copy">
+              <strong>Entire conversation</strong>
+              <span id="scope-entire-note">Every message on the page</span>
+            </span>
+          </label>
+          <label class="option" for="scope-selected">
+            <input type="radio" id="scope-selected" name="scope" value="selected" disabled>
+            <span class="option-copy">
+              <strong>Selected messages</strong>
+              <span id="scope-selected-note">Review the messages before exporting</span>
+            </span>
+          </label>
+        </div>
+        <div class="scope-actions" id="scope-actions" hidden>
+          <button class="btn btn--secondary" id="review-messages" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+            <span>Review messages</span>
+          </button>
+          <button class="link-button" id="select-on-page" type="button">Tick on the page instead</button>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="formats-title">
+        <div class="section-heading">
+          <h2 id="formats-title">Export format</h2>
+        </div>
+        <div class="format-grid" role="group" aria-label="Export format">
+          <button class="format-button" type="button" data-format="pdf" aria-pressed="true" disabled>
+            <svg class="icon" aria-hidden="true"><use href="#i-pdf"></use></svg>
+            <span class="format-name">PDF</span>
+            <span class="format-hint">Print / Save as PDF</span>
+          </button>
+          <button class="format-button" type="button" data-format="docx" aria-pressed="false" disabled>
+            <svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg>
+            <span class="format-name">Word</span>
+            <span class="format-hint">.docx file</span>
+          </button>
+          <button class="format-button" type="button" data-format="markdown" aria-pressed="false" disabled>
+            <svg class="icon" aria-hidden="true"><use href="#i-markdown"></use></svg>
+            <span class="format-name">Markdown</span>
+            <span class="format-hint">.md file</span>
+          </button>
+        </div>
+        <details class="more-formats" id="more-formats">
+          <summary>More formats (HTML, TXT, PNG, JSON)</summary>
+          <div class="column-list">
+            <button class="column-button" type="button" data-format="html" aria-pressed="false" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-html"></use></svg>
+              <span>HTML</span><span class="format-hint">Standalone page, images included</span>
+            </button>
+            <button class="column-button" type="button" data-format="txt" aria-pressed="false" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-txt"></use></svg>
+              <span>TXT</span><span class="format-hint">Plain text, no images</span>
+            </button>
+            <button class="column-button" type="button" data-format="image" aria-pressed="false" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>
+              <span>PNG</span><span class="format-hint">Long image of the document</span>
+            </button>
+            <button class="column-button" type="button" data-format="json" aria-pressed="false" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-json"></use></svg>
+              <span>JSON</span><span class="format-hint">Structured data for scripts</span>
+            </button>
+          </div>
+        </details>
+      </section>
+
+      <section class="block" aria-labelledby="theme-title">
+        <div class="section-heading">
+          <h2 id="theme-title">Appearance</h2>
+        </div>
+        <div class="theme-options" role="radiogroup" aria-label="Document theme">
+          <label class="theme-option" for="theme-light">
+            <input type="radio" id="theme-light" name="theme" value="light" checked>
+            <svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>
+            <span>Light</span>
+          </label>
+          <label class="theme-option" for="theme-dark">
+            <input type="radio" id="theme-dark" name="theme" value="dark">
+            <svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>
+            <span>Dark</span>
+          </label>
+          <label class="theme-option" for="theme-print">
+            <input type="radio" id="theme-print" name="theme" value="print">
+            <svg class="icon" aria-hidden="true"><use href="#i-print"></use></svg>
+            <span>Printable</span>
+          </label>
+        </div>
+        <label class="setting-row switch-row" for="include-images">
+          <span>Images, diagrams and infographics</span>
+          <input id="include-images" type="checkbox" checked>
+        </label>
+      </section>
+
+      <details class="settings">
+        <summary>Advanced settings</summary>
+        <div class="settings-list">
+          <label class="setting-row" for="include-timestamps">
+            <span>Include timestamps</span>
+            <input id="include-timestamps" type="checkbox">
+          </label>
+          <label class="setting-row" for="code-highlighting">
+            <span>Preserve code highlighting</span>
+            <input id="code-highlighting" type="checkbox">
+          </label>
+          <label class="setting-row" for="doc-mode">
+            <span>Word palette</span>
+            <select id="doc-mode">
+              <option value="color">Colour</option>
+              <option value="bw">Black &amp; white</option>
+            </select>
+          </label>
+        </div>
+        <p class="settings-note">
+          Page size, margins, fonts and image placement open in the export workspace, next to the preview.
+        </p>
+      </details>
+
+      <footer class="popup-footer">
+        <button class="primary-action" id="primary-action" type="button" disabled>
+          <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+          <span id="primary-label">Preview &amp; Export</span>
+        </button>
+        <p class="footer-note">Local exports. Nothing leaves your browser unless you allow remote images.</p>
+      </footer>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

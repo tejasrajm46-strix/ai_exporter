@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>AI Exporter Studio</title>
+    <link rel="stylesheet" href="export.css">
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+      <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M9 13h1.6a1.4 1.4 0 0 1 0 2.8H9V13zm0 2.8V19"/><path d="M13.5 13v6M13.5 13h2M13.5 16h1.6"/></symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M8.5 13h7M8.5 17h4"/></symbol>
+      <symbol id="i-markdown" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M6.5 15.5v-6l2.5 3 2.5-3v6"/><path d="M15 9.5v6M12.8 13.2 15 15.5l2.2-2.3"/></symbol>
+      <symbol id="i-txt" viewBox="0 0 24 24"><path d="M4 6h16M4 11h16M4 16h9"/></symbol>
+      <symbol id="i-json" viewBox="0 0 24 24"><path d="M9 4C6.8 4 7 6.4 7 8c0 2-2 2-2 2s2 0 2 2c0 1.6-.2 4 2 4"/><path d="M15 4c2.2 0 2 2.4 2 4 0 2 2 2 2 2s-2 0-2 2c0 1.6.2 4-2 4"/></symbol>
+      <symbol id="i-html" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/><path d="M13 6l-2 12"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5M3 17l9 5 9-5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 9v5M12 17h.01"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.6"/><path d="M20 4v7h-7"/></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.6 4.1L17.7 9l-4.1 1.6L12 15l-1.6-4.4L6.3 9l4.1-1.9z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+    </svg>
+
+    <header class="appbar">
+      <div class="appbar-brand">
+        <span class="brand-mark" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+        <div class="brand-text">
+          <h1>AI Exporter Studio</h1>
+          <p>Publication-quality exports for AI conversations</p>
+        </div>
+        <span class="badge badge--blue">v0.9.0</span>
+      </div>
+      <div class="appbar-meta">
+        <span class="pill" id="app-source"><svg class="icon" aria-hidden="true"><use href="#i-sparkles"></use></svg><span>Local conversation</span></span>
+        <span class="pill" id="app-scope">0 messages</span>
+        <span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span>Local only</span></span>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="panel" aria-label="Export controls">
+        <div class="panel-head">
+          <div class="panel-identity">
+            <span class="panel-logo" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+            <div>
+              <h2 id="doc-title">Loading conversation...</h2>
+              <p id="doc-meta">Preparing your export</p>
+            </div>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Workspace view">
+            <button class="tab is-active" id="tab-export" role="tab" aria-selected="true" aria-controls="view-export" type="button">Export</button>
+            <button class="tab" id="tab-messages" role="tab" aria-selected="false" aria-controls="view-messages" type="button">
+              Messages <span class="tab-count" id="pick-count">-</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-body" id="view-export" role="tabpanel" aria-labelledby="tab-export">
+          <section class="source-card" aria-labelledby="source-heading">
+            <div class="source-top">
+              <span class="step-num" aria-hidden="true">1</span>
+              <span class="eyebrow" id="source-heading">Content</span>
+              <a class="link" id="open-source" href="#" hidden>Open source</a>
+            </div>
+            <p class="source-title" id="source-title">Waiting for a conversation</p>
+            <p class="source-meta" id="source-meta">Open AI Exporter from a supported chat</p>
+            <div class="scope-line">
+              <span><strong id="scope-count">0</strong> messages &middot; <span id="scope-visuals">0 visuals</span></span>
+              <button class="link" id="choose-messages" type="button">Choose messages</button>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="group-head">
+              <h3><span class="step-num" aria-hidden="true">2</span>Format</h3>
+              <span class="hint" id="format-hint"></span>
+            </div>
+            <div class="format-list" id="format-list" role="radiogroup" aria-label="Export format"></div>
+            <details class="more-formats" id="more-formats">
+              <summary>More formats</summary>
+              <div class="more-format-list" id="more-format-list"></div>
+            </details>
+          </section>
+
+          <section class="group">
+            <div class="group-head">
+              <h3><span class="step-num" aria-hidden="true">3</span>Document style</h3>
+              <span class="hint">Rendered document</span>
+            </div>
+            <div class="themes" role="radiogroup" aria-label="Document theme">
+              <label class="theme-chip">
+                <input type="radio" name="theme" value="light" checked>
+                <svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>
+                <span>Light</span>
+              </label>
+              <label class="theme-chip">
+                <input type="radio" name="theme" value="dark">
+                <svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>
+                <span>Dark</span>
+              </label>
+              <label class="theme-chip">
+                <input type="radio" name="theme" value="print">
+                <svg class="icon" aria-hidden="true"><use href="#i-print"></use></svg>
+                <span>Printable</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="group visuals-simple">
+            <div class="switch-list">
+              <label class="switch-row">
+                <span>Include images, diagrams and infographics</span>
+                <input id="include-images" type="checkbox" checked>
+              </label>
+            </div>
+            <div class="group-head visual-review-line">
+              <span class="hint" id="visual-summary">Available visuals are included in the original order.</span>
+              <button class="link" id="manage-assets" type="button">Review visuals</button>
+            </div>
+            <span id="count-images" hidden>0</span><span id="count-diagrams" hidden>0</span><span id="count-charts" hidden>0</span>
+            <input id="include-diagrams" type="checkbox" checked hidden>
+            <input id="keep-image-positions" type="checkbox" checked hidden>
+          </section>
+
+          <details class="advanced" id="advanced">
+            <summary>
+              <span>Advanced settings</span>
+              <span class="summary-meta" id="advanced-summary">A4 &middot; Portrait</span>
+            </summary>
+            <div class="advanced-body">
+              <section class="adv-section">
+                <h4>Document layout</h4>
+                <label class="field" for="page-size">Paper size
+                  <select id="page-size">
+                    <option value="a4">A4 &middot; 210 &times; 297 mm</option>
+                    <option value="letter">Letter &middot; 8.5 &times; 11 in</option>
+                  </select>
+                </label>
+                <label class="field" for="orientation">Orientation
+                  <select id="orientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </label>
+                <label class="field" for="margin">Margins
+                  <select id="margin">
+                    <option value="normal">Normal</option>
+                    <option value="narrow">Narrow</option>
+                    <option value="wide">Wide</option>
+                  </select>
+                </label>
+                <label class="field" for="keep-blocks">Page breaks
+                  <select id="keep-blocks">
+                    <option value="keep" selected>Keep code &amp; figures together</option>
+                    <option value="auto">Allow breaks inside long blocks</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="adv-section">
+                <h4>Typography &amp; spacing</h4>
+                <label class="field" for="body-font">Body font
+                  <select id="body-font">
+                    <option value="sans">Inter / system sans</option>
+                    <option value="serif">Newsreader / Georgia serif</option>
+                  </select>
+                </label>
+                <label class="field" for="mono-font">Code font
+                  <select id="mono-font">
+                    <option value="jetbrains">JetBrains Mono</option>
+                    <option value="cascadia">Cascadia Code</option>
+                    <option value="consolas">Consolas</option>
+                  </select>
+                </label>
+                <label class="field" for="font-size">Font size
+                  <select id="font-size">
+                    <option value="compact">Compact &middot; 10.5 pt</option>
+                    <option value="comfortable" selected>Comfortable &middot; 11.5 pt</option>
+                    <option value="large">Large &middot; 12.5 pt</option>
+                  </select>
+                </label>
+                <label class="field" for="line-spacing">Line spacing
+                  <select id="line-spacing">
+                    <option value="compact">Compact &middot; 1.45</option>
+                    <option value="normal" selected>Normal &middot; 1.6</option>
+                    <option value="relaxed">Relaxed &middot; 1.75</option>
+                  </select>
+                </label>
+                <label class="field" for="para-spacing">Paragraph spacing
+                  <select id="para-spacing">
+                    <option value="compact">Compact</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="relaxed">Relaxed</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="adv-section">
+                <h4>Code &amp; output</h4>
+                <label class="switch-row">
+                  <span>Syntax highlighting</span>
+                  <input id="highlight" type="checkbox" checked>
+                </label>
+                <label class="switch-row">
+                  <span>Message timestamps</span>
+                  <input id="timestamps" type="checkbox">
+                </label>
+                <label class="field" for="doc-mode">Word palette
+                  <select id="doc-mode">
+                    <option value="color">Light &amp; colourful</option>
+                    <option value="bw">Black &amp; white</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="adv-section">
+                <h4>Visuals</h4>
+                <p class="note">Placement, captions, attribution and PNG detail live in the visual asset drawer, next to the assets they affect.</p>
+                <button class="btn btn--secondary btn--compact" id="open-assets" type="button">Open asset drawer</button>
+              </section>
+
+              <section class="adv-section">
+                <h4 id="export-file-title">Export file</h4>
+                <label class="field" for="filename">File name
+                  <input id="filename" type="text" maxlength="80" placeholder="Automatic" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="switch-row" title="Opt in for this preview only. Image hosts may receive your IP address and request timing.">
+                  <span>Load remote images</span>
+                  <input id="remote-images" type="checkbox">
+                </label>
+                <p class="note">Image fetching is opt-in. Only selected conversation image URLs are requested, without credentials or referrers. Failed fetches remain labelled and are reported after export.</p>
+              </section>
+            </div>
+          </details>
+        </div>
+
+        <div class="panel-body messages-view" id="view-messages" role="tabpanel" aria-labelledby="tab-messages" hidden>
+          <label class="search" for="pick-search">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+            <input type="search" id="pick-search" placeholder="Search messages and code" autocomplete="off">
+          </label>
+          <div class="quick-grid" role="group" aria-label="Quick selection">
+            <button class="mini" type="button" data-select="all">Select all</button>
+            <button class="mini" type="button" data-select="assistant">Answers only</button>
+            <button class="mini" type="button" data-select="user">Prompts only</button>
+            <button class="mini" type="button" data-select="none" title="Deselect all messages">Deselect all</button>
+          </div>
+          <p class="picker-note" id="pick-filter" hidden></p>
+          <p class="picker-note picker-empty" id="pick-empty" hidden>No messages match that search. Clear it to see the conversation again.</p>
+          <ol class="picker-list" id="pick-list"></ol>
+          <p class="picker-note">Selected messages appear in the preview and every download. Searching only filters the list; it never changes the selection.</p>
+        </div>
+
+        <footer class="panel-footer">
+          <p class="status" id="status" role="status" aria-live="polite">Preparing your export...</p>
+          <button class="status-action" id="status-action" type="button" hidden></button>
+          <div class="footer-actions">
+            <button class="btn btn--primary" id="primary" type="button" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+              <span>Export</span>
+            </button>
+            <button class="btn btn--secondary" id="open-doc" type="button" disabled title="Open the document in a new tab, for example to print from there.">
+              <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+              <span>Preview</span>
+            </button>
+          </div>
+        </footer>
+      </aside>
+
+      <main class="stage" id="stage">
+        <div class="stage-head">
+          <div class="stage-title">
+            <span class="step-num" aria-hidden="true">4</span>
+            <span class="doc-icon" aria-hidden="true"><svg><use href="#i-pdf"></use></svg></span>
+            <div>
+              <strong>Preview</strong>
+              <span id="stage-sub">Page layout</span>
+            </div>
+            <span class="badge badge--blue" id="format-badge">PDF</span>
+            <span class="badge" id="theme-badge">Light</span>
+            <span class="badge badge--green" id="visual-badge" hidden>0 visuals</span>
+          </div>
+          <div class="stage-controls">
+            <div class="segmented" id="page-controls">
+              <button class="icon-btn" id="prev-page" type="button" aria-label="Previous page" title="Previous page">
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+              </button>
+              <span class="seg-label" id="page-est">Page 1 of 1</span>
+              <button class="icon-btn" id="next-page" type="button" aria-label="Next page" title="Next page">
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+              </button>
+            </div>
+            <div class="segmented" id="zoom-controls">
+              <button class="icon-btn" id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out">
+                <svg class="icon" aria-hidden="true"><use href="#i-minus"></use></svg>
+              </button>
+              <span class="seg-label" id="zoom-level">65%</span>
+              <button class="icon-btn" id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+              </button>
+            </div>
+            <button class="icon-btn icon-btn--box" id="fit-width" type="button" aria-label="Fit to width" title="Fit to width">
+              <svg class="icon" aria-hidden="true"><use href="#i-fit"></use></svg>
+            </button>
+            <button class="stage-link" id="back-settings" type="button" title="Back to the export settings">Settings</button>
+            <button class="icon-btn icon-btn--box" id="open-assets-stage" type="button" aria-label="Open visual assets" title="Visual assets">
+              <svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="stage-body" id="stage-body">
+          <p class="stage-note" id="stage-note" hidden></p>
+          <p class="stage-note stage-note--warn" id="image-notice" role="status" hidden></p>
+          <div class="stage-scroll" id="stage-scroll">
+            <div class="stage-inner" id="stage-inner">
+              <iframe id="preview" title="Document preview" sandbox="allow-same-origin allow-modals"></iframe>
+            </div>
+            <pre class="source-preview" id="source" hidden aria-label="Exported source preview"></pre>
+            <figure class="image-preview" id="image-preview" hidden>
+              <img id="image" alt="PNG preview of the selected messages">
+              <figcaption id="image-note"></figcaption>
+            </figure>
+          </div>
+
+          <aside class="drawer" id="asset-drawer" aria-labelledby="drawer-title" hidden>
+            <header class="drawer-head">
+              <div>
+                <h2 id="drawer-title">Visual assets</h2>
+                <span id="drawer-count">0 assets</span>
+              </div>
+              <button class="icon-btn icon-btn--box" id="close-assets" type="button" aria-label="Close visual assets">
+                <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+              </button>
+            </header>
+            <div class="drawer-body">
+              <p class="note">Only assets that are genuinely present in the selected messages appear here. Nothing is generated or invented.</p>
+              <div class="drawer-actions">
+                <button class="btn btn--secondary btn--compact" id="assets-all" type="button">Include all</button>
+                <button class="btn btn--secondary btn--compact" id="assets-none" type="button">Exclude all</button>
+              </div>
+              <ul class="asset-list" id="asset-list"></ul>
+              <p class="note" id="drawer-empty" hidden>No visual assets in the selected messages.</p>
+
+              <section class="drawer-settings" aria-labelledby="drawer-settings-title">
+                <h3 id="drawer-settings-title">Placement &amp; appearance</h3>
+                <label class="field" for="image-layout">Layout
+                  <select id="image-layout">
+                    <option value="inline">Inline with text</option>
+                    <option value="center" selected>Centered</option>
+                    <option value="fit">Fit to page</option>
+                  </select>
+                </label>
+                <label class="field" for="image-quality">PNG detail
+                  <select id="image-quality">
+                    <option value="standard" selected>Standard &middot; 1.5&times;</option>
+                    <option value="high">High &middot; 2&times;</option>
+                  </select>
+                </label>
+                <label class="switch-row">
+                  <span>Captions &amp; alt text</span>
+                  <input id="include-captions" type="checkbox" checked>
+                </label>
+                <label class="switch-row">
+                  <span>Image sources</span>
+                  <input id="include-image-sources" type="checkbox">
+                </label>
+                <p class="note" id="quality-note">PNG detail applies to the PNG raster export. Every other format embeds the original asset at full resolution.</p>
+              </section>
+            </div>
+            <footer class="drawer-foot">
+              <button class="btn btn--secondary" id="done-assets" type="button">Done</button>
+            </footer>
+          </aside>
+          <div class="drawer-scrim" id="drawer-scrim" hidden></div>
+        </div>
+
+        <section class="empty" id="empty">
+          <h1>Nothing to export yet</h1>
+          <p>
+            Open the AI Exporter popup on a supported conversation (ChatGPT, Claude, Gemini or DeepSeek) and pick a
+            format. The document shows up here before it downloads, so you can check it first.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-scrim" id="modal-scrim" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-state" id="modal-progress">
+          <div class="spinner" aria-hidden="true"></div>
+          <h2 id="modal-title">Exporting document...</h2>
+          <p>Each stage runs on the real selection. No percentage is shown because the work is not measurable.</p>
+          <ol class="stage-list" id="progress-stages">
+            <li data-stage="0">Collecting selected content</li>
+            <li data-stage="1">Preparing visual assets</li>
+            <li data-stage="2">Generating document</li>
+            <li data-stage="3">Validating export</li>
+          </ol>
+        </div>
+        <div class="modal-state" id="modal-success" hidden>
+          <div class="modal-icon modal-icon--ok" aria-hidden="true"><svg><use href="#i-check"></use></svg></div>
+          <h2>Export complete</h2>
+          <p id="modal-file">document.pdf</p>
+          <dl class="modal-stats" id="modal-stats"></dl>
+          <div class="modal-actions">
+            <button class="btn btn--primary" id="modal-open-folder" type="button">Show folder</button>
+            <button class="btn btn--secondary" id="modal-export-again" type="button">Export again</button>
+          </div>
+        </div>
+        <div class="modal-state" id="modal-error" hidden>
+          <div class="modal-icon modal-icon--error" aria-hidden="true"><svg><use href="#i-alert"></use></svg></div>
+          <h2>Export failed</h2>
+          <p id="modal-error-message"></p>
+          <div class="modal-actions">
+            <button class="btn btn--primary" id="modal-retry" type="button">Retry</button>
+            <button class="btn btn--secondary" id="modal-close" type="button">Close</button>
+          </div>
+        </div>
+        <div class="modal-state" id="modal-info" hidden>
+          <div class="modal-icon" aria-hidden="true"><svg><use href="#i-print"></use></svg></div>
+          <h2>Print dialog opened</h2>
+          <p id="modal-info-message"></p>
+          <div class="modal-actions">
+            <button class="btn btn--primary" id="modal-info-close" type="button">Done</button>
+            <button class="btn btn--secondary" id="modal-info-tab" type="button">Open in tab</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="../utils/document-theme.js"></script>
+    <script src="../utils/mcq.js"></script>
+    <script src="../utils/exporter.js"></script>
+    <script src="../utils/docx.js"></script>
+    <script src="export.js"></script>
+  </body>
+</html>

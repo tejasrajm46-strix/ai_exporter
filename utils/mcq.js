@@ -170,5 +170,5 @@
     return out;
   }
 
-  globalThis.AIMcq = { group, looksLikeStem, optionOf };
+  globalThis.AIMcq = { group };
 })();

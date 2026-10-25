@@ -1107,6 +1107,35 @@
     ensure(!mcq.querySelector(".mcq-q").textContent.includes("A. static"), "The stem must not swallow the options.");
   });
 
+  await check("A question written as a heading becomes one MCQ block", () => {
+    const sample = mcqChat([
+      { type: "heading", level: 3, text: "Q14. What is the purpose of the link register?" },
+      { type: "paragraph", text: "A. Store the last cache tag." },
+      { type: "paragraph", text: "B. Hold the current ALU result permanently." },
+      { type: "paragraph", text: "C. Preserve the return address so execution can resume after the procedure." },
+      { type: "paragraph", text: "D. Count the number of pipeline stalls." },
+      { type: "paragraph", text: "Correct answer: C" },
+      { type: "paragraph", text: "Explanation: the callee returns to the saved address." }
+    ]);
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(sample), "text/html");
+    const mcq = doc.querySelector(".mcq");
+    ensure(mcq, "A heading stem with four option paragraphs must render as one MCQ block.");
+    ensure([...mcq.querySelectorAll(".mcq-letter")].map((node) => node.textContent).join() === "A.,B.,C.,D.", "Options must keep A-D order.");
+    ensure(mcq.querySelector(".mcq-answer").textContent === "Correct answer: C", "The answer must stay with its question.");
+    ensure(!doc.querySelector("h3.sub"), "The question must not stay a separate heading that can break away from its options.");
+  });
+
+  await check("A formula wrapped over two lines is compiled, not printed as source", () => {
+    const sample = mcqChat([
+      { type: "paragraph", text: "Formula: $T=\\frac{IC \\times CPI}{f}$" },
+      { type: "paragraph", text: "Substitution: $T=\\frac{800\\times10^6\\times2.5}{2\\times10^9}\n=\\boxed{1\\text{ s}}$" }
+    ]);
+    const html = exporter.documentHtml(sample);
+    ensure(html.includes("<math"), "Wrapped TeX must reach the MathML compiler.");
+    ensure(!html.includes("\\frac") && !html.includes("\\boxed"), "Raw TeX commands must never appear in the document.");
+    ensure(!html.includes("$"), "Dollar delimiters must not survive into the document.");
+  });
+
   await check("Inline options split only when the run is unambiguous", () => {
     const inline = mcqChat([{ type: "paragraph", text: "Q3. Which Greek letter comes third? A. alpha. B. beta. C. gamma. D. delta." }]);
     const doc = new DOMParser().parseFromString(exporter.documentHtml(inline), "text/html");

@@ -37,11 +37,18 @@
       .replace(/\$([^$\n]+)\$/g, "$1");
   }
 
+  /* A wrapped formula is folded by the MCQ layer (utils/mcq.js) before blocks
+     are split; inline runs that still carry a line break go through the same
+     fold here, so list items and quotes stay whole too. */
+  function joinMathLines(text) {
+    return globalThis.AIMcq ? globalThis.AIMcq.foldMath(text) : text;
+  }
+
   function formatInline(text) {
     /* Math is compiled to MathML before the surrounding text is escaped: the
        TeX source must reach the compiler with its < and & characters intact, so
        the inline $...$ spans are split out first and everything else is escaped. */
-    return String(text == null ? "" : text)
+    return joinMathLines(String(text == null ? "" : text))
       .split(/(\$[^$\n]+\$)/g)
       .map((part) => {
         const math = /^\$([^$\n]+)\$$/.exec(part);
@@ -49,7 +56,7 @@
           const mathml = texToMathML(math[1], false);
           return mathml
             ? `<span class="math-inline">${mathml}</span>`
-            : `<span class="tex">${escapeHtml(math[1])}</span>`;
+            : `<span class="tex">${escapeHtml(texToPlain(math[1]))}</span>`;
         }
         let out = escapeHtml(part);
         out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -375,6 +382,9 @@
         case "bigl": case "bigr": case "Bigl": case "Bigr":
         case "biggl": case "biggr": case "Biggl": case "Biggr":
           return readDelimiter();
+        /* A modulo operator needs space on both sides; as an upright
+           identifier it would read "numberbmodNumber". */
+        case "bmod": return mathNode("mo", [mathText("mod")], { lspace: "0.28em", rspace: "0.28em" });
         case "quad": return mathSpace("1em");
         case "qquad": return mathSpace("2em");
         case "limits": case "nolimits": case "displaystyle": case "textstyle": case "left.":
@@ -425,6 +435,27 @@
     }
 
     return readSequence(false);
+  }
+
+  /* Last resort for TeX the compiler cannot use: readable characters, never the
+     source commands. Fractions become (a)/(b), commands become their symbols
+     or names, and the braces disappear. */
+  function texToPlain(tex) {
+    let text = String(tex == null ? "" : tex);
+    for (let pass = 0; pass < 4; pass += 1) {
+      text = text
+        .replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)")
+        .replace(/\\(?:boxed|mathbf|mathit|boldsymbol|text|textrm|mathrm|operatorname)\s*\{([^{}]*)\}/g, "$1");
+    }
+    return text
+      .replace(/\\(?:left|right|big|Big|bigg|Bigg)\s*/g, "")
+      .replace(/\\times/g, "\u00d7").replace(/\\cdot/g, "\u00b7").replace(/\\div/g, "\u00f7")
+      .replace(/\\le(q)?/g, "\u2264").replace(/\\ge(q)?/g, "\u2265").replace(/\\neq/g, "\u2260")
+      .replace(/\\pm/g, "\u00b1").replace(/\\infty/g, "\u221e").replace(/\\bmod/g, " mod ")
+      .replace(/\\([a-zA-Z]+)/g, "$1")
+      .replace(/[{}]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   /* Compile TeX to a MathML string. Empty output means "not usable as maths",
@@ -1114,7 +1145,7 @@ ${caption}${source}</figure>`;
         return renderImage(block, state, options);
       case "formula": {
         const mathml = texToMathML(block.tex, true);
-        return `<div class="math">${mathml || `<span class="tex">${escapeHtml(block.tex)}</span>`}</div>`;
+        return `<div class="math">${mathml || `<span class="tex">${escapeHtml(texToPlain(block.tex))}</span>`}</div>`;
       }
       case "divider":
         return '<hr class="divider">';

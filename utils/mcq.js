@@ -30,12 +30,43 @@
     return Boolean(block) && block.type === "paragraph" && typeof block.text === "string";
   }
 
+  /* A question is often written as a heading ("### Q14. ...") with the options
+     as ordinary paragraphs. The stem may therefore be either kind of block. */
+  function isStemBlock(block) {
+    return Boolean(block) &&
+      (block.type === "paragraph" || block.type === "heading" || block.type === "subheading") &&
+      typeof block.text === "string";
+  }
+
   /** A stem is numbered, or ends like a question. Nothing looser than that. */
   function looksLikeStem(text) {
     const value = String(text == null ? "" : text).trim();
     if (!value) return false;
     if (STEM_PREFIX.test(value)) return true;
     return /[?:]\s*$/.test(value);
+  }
+
+  /**
+   * One formula written across two source lines is still one formula. Join a
+   * line whose $...$ span is still open with the following lines before any
+   * line-based splitting happens, or the halves print as raw TeX.
+   */
+  function foldMath(text) {
+    const value = String(text == null ? "" : text);
+    if (value.indexOf("$") === -1) return value;
+    const lines = value.split(/\r?\n/);
+    const joined = [];
+    for (let index = 0; index < lines.length; index += 1) {
+      let line = lines[index];
+      let folded = 0;
+      while (((line.match(/\$/g) || []).length % 2 === 1) && index + 1 < lines.length && folded < 3) {
+        index += 1;
+        line += ` ${lines[index].trim()}`;
+        folded += 1;
+      }
+      joined.push(line);
+    }
+    return joined.join("\n");
   }
 
   /**
@@ -46,7 +77,7 @@
    */
   function splitParagraph(block) {
     if (!isParagraph(block) || !/[\r\n]/.test(block.text)) return [block];
-    return block.text
+    return foldMath(block.text)
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean)
@@ -103,7 +134,7 @@
   /** A stem plus 3+ sequential options, an optional answer and explanation. */
   function mcqAt(blocks, start) {
     const stem = blocks[start];
-    if (!isParagraph(stem) || !looksLikeStem(stem.text)) return null;
+    if (!isStemBlock(stem) || !looksLikeStem(stem.text)) return null;
     const options = [];
     let index = start + 1;
     while (index < blocks.length && options.length < 8) {
@@ -150,7 +181,7 @@
       const previous = expanded[expanded.length - 1];
       if (run.stem && looksLikeStem(run.stem)) {
         expanded.push({ type: "paragraph", text: run.stem });
-      } else if (run.stem || !isParagraph(previous) || !looksLikeStem(previous.text)) {
+      } else if (run.stem || !isStemBlock(previous) || !looksLikeStem(previous.text)) {
         expanded.push(block);
         continue;
       }
@@ -170,5 +201,5 @@
     return out;
   }
 
-  globalThis.AIMcq = { group };
+  globalThis.AIMcq = { group, foldMath };
 })();

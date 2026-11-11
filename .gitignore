@@ -5,6 +5,13 @@ dist/
 .tmp/
 node_modules/
 
+# Local environment and credentials
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+
 # Tool metadata
 .freebuff/
 

@@ -1,4 +1,5 @@
-// Build dist/AI-Exporter-<version>.zip from the shipped extension files only.
+// Build the release archive from the shipped extension files only.
+// The archive is the load-unpacked payload: no README, no artwork, no tooling.
 // Usage: npm run package
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
@@ -7,9 +8,11 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(path.join(ROOT, "manifest.json"), "utf8"));
 
-// The archive is the load-unpacked payload: manifest, runtime folders, README.
 const INCLUDE_DIRS = ["background", "content", "export", "icons", "popup", "ui", "utils"];
-const INCLUDE_FILES = ["manifest.json", "README.md"];
+const INCLUDE_FILES = ["manifest.json"];
+
+// Release name carries the version as published (0.9.0 -> AI_exported_0.9.zip).
+const ZIP_NAME = `AI_exported_${manifest.version.replace(/\.0$/, "")}.zip`;
 
 function collect(directory, prefix) {
   const entries = [];
@@ -111,7 +114,7 @@ end.writeUInt16LE(0, 20);
 
 const archive = Buffer.concat([...locals, ...centrals, end]);
 mkdirSync(path.join(ROOT, "dist"), { recursive: true });
-const out = path.join(ROOT, "dist", `AI-Exporter-${manifest.version}.zip`);
+const out = path.join(ROOT, "dist", ZIP_NAME);
 writeFileSync(out, archive);
 
 console.log(`packaged ${entries.length} files -> ${path.relative(ROOT, out)}`);

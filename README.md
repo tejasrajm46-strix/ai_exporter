@@ -215,7 +215,7 @@ tables keep minimal borders.
 
 ```bash
 npm run check      # node --check every script + verify manifest paths
-npm run package    # build dist/AI-Exporter-0.9.0.zip
+npm run package    # build dist/AI_exported_0.9.zip (extension files only)
 ```
 
 The self-check page exercises the real parser, exporter, document generator and

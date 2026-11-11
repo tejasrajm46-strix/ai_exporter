@@ -1,8 +1,11 @@
-# Local scratch: browser harnesses, generated PDFs/PNGs/DOCX, Chrome profiles,
-# server and save logs. Everything here is reproducible and machine-specific.
-.tmp/
+# Generated release archives
+dist/
 
-# Tool metadata (Freebuff project marker), not part of the extension
+# Local scratch, browser profiles and generated samples
+.tmp/
+node_modules/
+
+# Tool metadata
 .freebuff/
 
 # OS and editor noise

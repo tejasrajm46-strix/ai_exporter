@@ -4,56 +4,10 @@
    2. exported document themes (applied inside the preview frame and in every generated file) */
 
 :root {
-  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
-
-  /* Brand palette: navy anchors the text and the app bar, plum carries the
-     primary action, burgundy is the secondary accent, dusty rose and blush
-     mark selection and warnings, amber is used sparingly for highlights.
-     Ivory and white are the workspace and document surfaces. */
-  --navy: #1b1931;
-  --plum: #44174e;
-  --burgundy: #662249;
-  --rose: #a34054;
-  --amber: #ed9659;
-  --blush: #e9bcc9;
-  --ivory: #fff9f6;
-
-  --bg: #fff9f6;
-  --bg-grid: #f6ece6;
-  --surface: #ffffff;
-  --surface-2: #fdf5f1;
-  --surface-3: #f6ebe5;
-  --card: #ffffff;
-  --border: #eadfd8;
-  --border-strong: #dcc9c0;
-  --text: #1b1931;
-  --text-soft: #3d3453;
-  --muted: #77717f;
-  --accent: #44174e;
-  --accent-ink: #ffffff;
-  --accent-soft: #f7e6ec;
-  --accent-border: #e0b4c4;
-  --ok: #2c6a4f;
-  --ok-soft: #e9f4ee;
-  --ok-border: #bfdccc;
-  --warn: #8a4a16;
-  --warn-soft: #fdf1e5;
-  --warn-border: #edcfb4;
-  --danger: #a34054;
-  --danger-soft: #fbe9ed;
-  --danger-border: #efc3cc;
-  --violet: #662249;
-  --violet-soft: #f6e7ec;
-  --violet-border: #dfb9c5;
-  --shadow-sm: 0 1px 2px rgba(27, 25, 49, 0.06);
-  --shadow-md: 0 10px 26px rgba(68, 23, 78, 0.10);
-  --shadow-paper: 0 16px 40px rgba(27, 25, 49, 0.14), 0 0 0 1px rgba(27, 25, 49, 0.05);
-  --radius: 10px;
-
-  color-scheme: light;
+  color-scheme: dark;
+  font-family: var(--font-ui);
 }
+
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -167,8 +121,13 @@ a { color: var(--violet); }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
+  /* Controls stay narrow so the document is the largest thing on screen. */
+  grid-template-columns: minmax(316px, 360px) minmax(0, 1fr);
   gap: 0;
+}
+
+@media (max-width: 1180px) {
+  .workspace { grid-template-columns: minmax(292px, 326px) minmax(0, 1fr); }
 }
 
 .panel {
@@ -349,8 +308,10 @@ a { color: var(--violet); }
 
 /* ---------- grouped controls ---------- */
 
-.group { padding: 15px 0 2px; border-bottom: 1px solid var(--border); }
-.group:last-of-type { border-bottom: 0; }
+/* Sections are separated by spacing and their numbered heading, not by a
+   stack of dividers. */
+.group { padding: 14px 0 0; }
+.group + .group { margin-top: 2px; }
 
 .group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
 .group-head h3 {
@@ -778,7 +739,7 @@ a { color: var(--violet); }
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 20px 22px 34px;
+  padding: 18px 20px 30px;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -1055,7 +1016,6 @@ a { color: var(--violet); }
   .stage { min-height: 78vh; }
   .stage-head { padding: 9px 11px; }
   .stage-scroll { padding: 14px 12px 26px; }
-  .format-card[data-format="pdf"] { grid-column: auto; }
 }
 
 @media (max-width: 480px) {

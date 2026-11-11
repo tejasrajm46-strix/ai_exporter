@@ -3,13 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
+    <meta name="color-scheme" content="dark">
     <title>AI Exporter Studio</title>
+    <link rel="stylesheet" href="../ui/fonts.css">
+    <link rel="stylesheet" href="../ui/tokens.css">
     <link rel="stylesheet" href="export.css">
+    <link rel="stylesheet" href="../ui/premium.css">
   </head>
   <body>
     <svg class="sprite" aria-hidden="true" focusable="false">
-      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
       <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M9 13h1.6a1.4 1.4 0 0 1 0 2.8H9V13zm0 2.8V19"/><path d="M13.5 13v6M13.5 13h2M13.5 16h1.6"/></symbol>
       <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M19 21H5V3h9l5 5z"/><path d="M8.5 13h7M8.5 17h4"/></symbol>
       <symbol id="i-markdown" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M6.5 15.5v-6l2.5 3 2.5-3v6"/><path d="M15 9.5v6M12.8 13.2 15 15.5l2.2-2.3"/></symbol>
@@ -35,12 +37,11 @@
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
       <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.6"/><path d="M20 4v7h-7"/></symbol>
-      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.6 4.1L17.7 9l-4.1 1.6L12 15l-1.6-4.4L6.3 9l4.1-1.9z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
     </svg>
 
     <header class="appbar">
       <div class="appbar-brand">
-        <span class="brand-mark" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+        <span class="brand-mark" aria-hidden="true"><img src="../ui/logo-mark.svg" alt=""></span>
         <div class="brand-text">
           <h1>AI Exporter Studio</h1>
           <p>Publication-quality exports for AI conversations</p>
@@ -48,7 +49,7 @@
         <span class="badge badge--blue">v0.9.0</span>
       </div>
       <div class="appbar-meta">
-        <span class="pill" id="app-source"><svg class="icon" aria-hidden="true"><use href="#i-sparkles"></use></svg><span>Local conversation</span></span>
+        <span class="pill" id="app-source"><svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg><span>Local conversation</span></span>
         <span class="pill" id="app-scope">0 messages</span>
         <span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span>Local only</span></span>
       </div>
@@ -58,7 +59,7 @@
       <aside class="panel" aria-label="Export controls">
         <div class="panel-head">
           <div class="panel-identity">
-            <span class="panel-logo" aria-hidden="true"><svg><use href="#i-spark"></use></svg></span>
+            <span class="panel-logo" aria-hidden="true"><img src="../ui/logo-mark.svg" alt=""></span>
             <div>
               <h2 id="doc-title">Loading conversation...</h2>
               <p id="doc-meta">Preparing your export</p>
@@ -147,6 +148,11 @@
             <div class="advanced-body">
               <section class="adv-section">
                 <h4>Document layout</h4>
+                <label class="switch-row">
+                  <span>Title page</span>
+                  <input id="include-cover" type="checkbox">
+                </label>
+                <p class="note">Off by default: the document opens on the conversation title.</p>
                 <label class="field" for="page-size">Paper size
                   <select id="page-size">
                     <option value="a4">A4 &middot; 210 &times; 297 mm</option>
@@ -329,6 +335,7 @@
         <div class="stage-body" id="stage-body">
           <p class="stage-note" id="stage-note" hidden></p>
           <p class="stage-note stage-note--warn" id="image-notice" role="status" hidden></p>
+          <p class="stage-note stage-note--warn" id="coverage-note" role="status" hidden></p>
           <div class="stage-scroll" id="stage-scroll">
             <div class="stage-inner" id="stage-inner">
               <iframe id="preview" title="Document preview" sandbox="allow-same-origin allow-modals"></iframe>
@@ -393,6 +400,7 @@
         </div>
 
         <section class="empty" id="empty">
+          <div class="empty-mark" aria-hidden="true"><img src="../ui/logo-mark.svg" alt=""></div>
           <h1>Nothing to export yet</h1>
           <p>
             Open the AI Exporter popup on a supported conversation (ChatGPT, Claude, Gemini or DeepSeek) and pick a

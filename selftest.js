@@ -166,6 +166,42 @@
     ensure(new Set(entries.map((entry) => entry.id)).size === 3);
     ensure(entries.map((entry) => entry.id).join() === parser.findMessages(doc, { hostname: "claude.ai" }).map((entry) => entry.id).join());
   });
+  await check("Gemini adapters keep roles, order and content", () => {
+    const parsed = parse(
+      '<user-query-content><div class="query-text"><p>What is a group?</p></div></user-query-content>' +
+      '<model-response><div class="markdown"><p>A set with an associative operation.</p><pre><code class="language-python">g = Group()</code></pre></div></model-response>',
+      "gemini.google.com"
+    );
+    ensure(parsed.messages.length === 2, `Gemini adapters must find both turns (found ${parsed.messages.length}).`);
+    ensure(parsed.messages[0].role === "user" && parsed.messages[1].role === "assistant", "Gemini roles must come from the adapter, not inference.");
+    ensure(parsed.messages[0].blocks.some((block) => block.text === "What is a group?"), "The Gemini prompt must survive.");
+    ensure(parsed.messages[1].blocks.some((block) => block.type === "code" && block.code === "g = Group()"), "Gemini code must survive.");
+  });
+
+  await check("DeepSeek adapters read both sides without the hashed class", () => {
+    const parsed = parse(
+      '<div class="ds-message"><div class="fbb737a4"><p>Explain closures.</p></div><div class="ds-markdown"><p>A function plus its scope.</p></div></div>',
+      "chat.deepseek.com"
+    );
+    ensure(parsed.messages.length === 2, `DeepSeek must read both sides (found ${parsed.messages.length}).`);
+    ensure(parsed.messages[0].role === "user" && parsed.messages[1].role === "assistant", "DeepSeek roles must come from the adapter.");
+    ensure(parsed.messages[1].text.includes("A function plus its scope."), "The DeepSeek answer must survive.");
+  });
+
+  await check("Partial extraction is reported, not silently exported", () => {
+    const doc = new DOMParser().parseFromString(
+      '<section data-testid="conversation-turn-1" data-message-author-role="user"><div class="whitespace-pre-wrap">Kept turn</div></section>' +
+      '<section data-testid="conversation-turn-2" data-message-author-role="assistant"></section>',
+      "text/html"
+    );
+    const entries = parser.findMessages(doc, { hostname: "chatgpt.com" });
+    ensure(entries.length === 1, "The readable turn must still be exported.");
+    ensure(entries.coverage && entries.coverage.unreadable >= 1, "An unreadable turn must be counted, not dropped.");
+    const page = parser.parsePage(doc, { hostname: "chatgpt.com", href: "https://chatgpt.com/c/1" });
+    ensure(page.coverage && page.coverage.unreadable >= 1, "parsePage must carry coverage to the popup.");
+    ensure(page.messageCount === 1, "Coverage must not add phantom messages.");
+  });
+
   await check("Code textboxes use the specified palette", () => {
     const light = exporter.documentHtml(chat, { theme: "light" });
     const dark = exporter.documentHtml(chat, { theme: "dark" });
@@ -281,9 +317,58 @@
     ensure(doc.querySelector(".math mfrac"), "\\binom should render as a MathML fraction.");
     ensure(doc.querySelector(".math-inline"), "Inline maths should use the inline wrapper.");
     ensure(!html.includes("\\subseteq"), "Raw TeX must not leak into the rendered document.");
+    const modDoc = new DOMParser().parseFromString(exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "a \\equiv b \\pmod m" }
+    ] }] }), "text/html");
+    const modMath = modDoc.querySelector(".math math");
+    ensure(modMath && !/pmod/i.test(modMath.textContent), "\\pmod must compile to (mod m), not italic letters.");
+    const modWord = [...modMath.querySelectorAll("mi")].find((node) => node.textContent === "mod");
+    ensure(modWord && modWord.getAttribute("mathvariant") === "normal", "mod must be upright inside \\pmod.");
+    const matrixDoc = new DOMParser().parseFromString(exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}" }
+    ] }] }), "text/html");
+    const matrix = matrixDoc.querySelector(".math mtable");
+    ensure(matrix, "A matrix environment must compile to an mtable.");
+    ensure(matrix.querySelectorAll("mtr").length === 2 && matrix.querySelectorAll("mtd").length === 4, "Matrix rows and cells must survive.");
+    ensure(!/begin\{pmatrix\}|end\{pmatrix\}/.test(matrixDoc.querySelector(".math").textContent), "Environment markers must not leak into the page.");
+  });
+  await check("Pasted \\( \\) and \\[ \\] mathematics is normalised at the source", () => {
+    const doc = new DOMParser().parseFromString(
+      '<main><section data-testid="conversation-turn-1"><div data-message-author-role="user">' +
+        '<div class="whitespace-pre-wrap">Find \\(a\\times b\\equiv1\\pmod{15}\\).</div></div></section>' +
+        '<section data-testid="conversation-turn-2"><div data-message-author-role="assistant">' +
+        '<div class="markdown"><p>\\[ \\boxed{2^{-1}=8} \\]</p></div></div></section></main>',
+      "text/html"
+    );
+    const parsed = AIExporterParser.parsePage(doc, { hostname: "chatgpt.com", href: "https://chatgpt.com/c/x" });
+    ensure(parsed.messages.length === 2, "Both turns must parse, not only the KaTeX one.");
+    ensure(parsed.messages[0].blocks[0].text.includes("$a\\times b\\equiv1\\pmod{15}$"), "Inline \\( \\) must become a $...$ span.");
+    ensure(parsed.messages[1].blocks.some((block) => block.type === "formula" && block.tex.includes("\\boxed")), "Display \\[ \\] must become a formula block.");
+  });
+  await check("Pasted delimiters compile instead of leaking TeX", () => {
+    const html = exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "paragraph", text: "We need \\(a \\times b \\equiv 1 \\pmod{15}\\) and \\(2\\times8=16\\)." },
+      { type: "paragraph", text: "\\[ \\boxed{2^{-1}=8} \\]" },
+      { type: "formula", tex: "\\frac{1}{1+\\frac{1}{x}}" }
+    ] }] });
+    ensure(!html.includes("\\(") && !html.includes("\\["), "Delimiters must not survive into the document.");
+    ensure(!html.includes("\\times") && !html.includes("\\pmod"), "TeX commands must not leak as text.");
+    ensure(!html.includes('class="tex tex--error"'), "Supported expressions must not fall back to source.");
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    ensure(doc.querySelectorAll("math").length >= 3, "Every expression must be MathML.");
+    ensure(doc.querySelector(".math menclose"), "\\boxed must stay boxed.");
+    ensure(doc.querySelectorAll("math mfrac").length >= 2, "Nested fractions must compile.");
   });
   const docxText = (sample = chat, options = {}) =>
     docx.parts(sample, options).files.find((file) => file.name === "word/document.xml").text;
+  await check("Word receives readable maths, not TeX commands", () => {
+    const xml = docxText({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "\\boxed{2^{-1}=8}" },
+      { type: "paragraph", text: "and \\(a\\times b\\)" }
+    ] }] });
+    ensure(!xml.includes("\\boxed") && !xml.includes("\\times"), "DOCX must not carry raw LaTeX.");
+    ensure(xml.includes("Cambria Math"), "Math runs must use the math font.");
+  });
   await check("Format metadata drives every advertised download", () => {
     ensure(Object.keys(exporter.FORMATS).join() === "pdf,docx,markdown,txt,json,html,image");
     for (const meta of Object.values(exporter.FORMATS)) {
@@ -294,12 +379,14 @@
     ensure(exporter.FORMATS.docx.settings.theme === false, "Word has no document theme, so the theme choice must be disabled.");
     ensure(exporter.FORMATS.docx.settings.highlight === false, "Word code is plain text, so syntax colouring must be disabled.");
   });
-  await check("Paged previews name the format they represent", () => {
-    const docxDoc = exporter.documentHtml(chat, { format: "docx" });
+  await check("A requested title page names the format it represents", () => {
+    const docxDoc = exporter.documentHtml(chat, { format: "docx", includeCover: true });
     ensure(docxDoc.includes("Word (.docx)") && !docxDoc.includes("PDF (A4"), "The Word preview must not call itself a PDF.");
-    const htmlDoc = exporter.documentHtml(chat, { format: "html" });
+    const htmlDoc = exporter.documentHtml(chat, { format: "html", includeCover: true });
     ensure(htmlDoc.includes("HTML document"), "The HTML preview must name the HTML file.");
-    ensure(exporter.documentHtml(chat, { format: "pdf" }).includes("PDF (A4, Portrait)"));
+    ensure(exporter.documentHtml(chat, { format: "pdf", includeCover: true }).includes("PDF (A4, Portrait)"));
+    const plain = exporter.documentHtml(chat, { format: "pdf" });
+    ensure(!plain.includes("PDF (A4") && !plain.includes('class="sheet cover"'), "Without a title page, export metadata must not appear at all.");
   });
   await check("Word export is a real .docx package", () => {
     const packageParts = docx.parts(chat, { docMode: "color" });
@@ -328,8 +415,9 @@
     ensure(document.includes("&lt;img"));
   });
   await check("DOCX black-and-white mode drops the accent palette", () => {
-    ensure(docxText(chat, { docMode: "color" }).includes('w:fill="F2F4F6"'));
-    ensure(!docxText(chat, { docMode: "bw" }).includes("F2F4F6"));
+    ensure(docxText(chat, { docMode: "color" }).includes('w:color w:val="2F4A63"'), "Colour Word keeps the document accent.");
+    ensure(!docxText(chat, { docMode: "bw" }).includes("2F4A63"), "Black and white Word must drop the accent.");
+    ensure(!docxText(chat, { docMode: "bw" }).includes('w:fill="F2F4F6"'), "Speaker labels must not be tinted in either mode.");
     const styles = docx.parts(chat, { docMode: "color" }).files.find((file) => file.name === "word/styles.xml").text;
     ensure(styles.includes('w:fill="F3F4F6"') && styles.includes('w:fill="F6F6F5"'), "Word code/output fills must use the shared palette.");
   });
@@ -454,7 +542,7 @@
     ensure(result.filename.endsWith(".html") && result.mime === "text/html");
     ensure(result.text.startsWith("<!doctype html>"), "HTML must be a full document.");
     ensure(result.text.includes("script-src 'none'"), "The exported HTML must keep its no-script policy.");
-    ensure(result.text.includes("HTML document"), "The downloaded HTML must label itself HTML, not PDF.");
+    ensure(!result.text.includes("PDF (A4") && !/Exported with AI Exporter/i.test(result.text), "The downloaded HTML must not label itself PDF or carry exporter branding.");
     ensure(result.text.includes("Array operations"), "The document must contain the conversation.");
     ensure(exporter.FORMAT_LABELS.html === "HTML");
   });
@@ -887,22 +975,28 @@
     frame.remove();
   });
 
-  await check("Workspace chrome uses the midnight studio palette", async () => {
+  await check("Workspace chrome uses the jet-black editorial identity", async () => {
     const frame = await controllerFrame();
     const win = frame.contentWindow;
     const doc = frame.contentDocument;
     const root = win.getComputedStyle(doc.documentElement);
     const token = (name) => root.getPropertyValue(name).trim().toLowerCase();
-    ensure(token("--navy") === "#1b1931" && token("--plum") === "#44174e", "The navy and plum brand anchors are missing.");
-    ensure(token("--bg") === "#fff9f6", `The workspace must sit on soft ivory (got ${token("--bg")}).`);
-    ensure(token("--accent") === "#44174e", `Primary actions must use rich plum (got ${token("--accent")}).`);
-    ensure(token("--amber") === "#ed9659" && token("--blush") === "#e9bcc9", "Amber and blush are part of the palette.");
-    ensure(token("--muted") === "#77717f", `Secondary text must use the specified muted grey (got ${token("--muted")}).`);
+    ensure(token("--black") === "#000000" && token("--charcoal") === "#171717", "The jet-black and charcoal anchors are missing.");
+    ensure(token("--white") === "#ffffff" && token("--grey") === "#a6a6a6" && token("--pale") === "#ffe4d6", "The soft-white, grey and pale-orange anchors are missing.");
+    ensure(token("--flame") === "#ff5100", `The signature accent must be flame orange (got ${token("--flame")}).`);
+    ensure(token("--bg") === "#000000" && token("--surface-1") === "#0a0a0a", "The workspace must sit on black with charcoal surfaces.");
+    ensure(token("--accent") === "#ff5100", `Primary actions must use flame orange (got ${token("--accent")}).`);
+    ensure(token("--muted") === "#a6a6a6", `Secondary text must use the specified grey (got ${token("--muted")}).`);
     const appbar = win.getComputedStyle(doc.querySelector(".appbar"));
-    ensure(appbar.backgroundColor === "rgb(27, 25, 49)", `The app bar must be deep navy (got ${appbar.backgroundColor}).`);
-    // Links use burgundy, which stays readable on ivory.
+    ensure(appbar.backgroundColor === "rgb(0, 0, 0)", `The app bar must be jet black (got ${appbar.backgroundColor}).`);
     const link = win.getComputedStyle(doc.getElementById("choose-messages"));
-    ensure(link.color === "rgb(102, 34, 73)", `Links must use burgundy for contrast (got ${link.color}).`);
+    ensure(link.color === "rgb(255, 81, 0)", `Links must use flame orange (got ${link.color}).`);
+    ensure(/archivo black/.test(token("--font-display")), "Display headings must use Archivo Black.");
+    ensure(/space grotesk/.test(token("--font-heading")), "Interface headings must use Space Grotesk.");
+    ensure(/inter/.test(token("--font-ui")) && /jetbrains mono/.test(token("--font-mono")), "UI and technical type must be Inter and JetBrains Mono.");
+    ensure(/stix two math/.test(token("--font-math")), "Mathematical expressions must keep the STIX fallback.");
+    const primaryStyle = win.getComputedStyle(doc.getElementById("primary"));
+    ensure(primaryStyle.backgroundColor === "rgb(255, 81, 0)" && primaryStyle.color === "rgb(0, 0, 0)", "The primary action must be an orange block with black text.");
     frame.remove();
   });
 
@@ -930,14 +1024,14 @@
     const onPanel = (element) => contrast(win.getComputedStyle(element).color, panelBackground);
     const body = win.getComputedStyle(doc.body).backgroundColor;
     const panelBackground = win.getComputedStyle(doc.querySelector(".panel")).backgroundColor;
-    ensure(contrast(win.getComputedStyle(doc.querySelector(".brand-text h1")).color, win.getComputedStyle(doc.querySelector(".appbar")).backgroundColor) >= 4.5, "The app bar title must stay legible on navy.");
-    ensure(onPanel(doc.getElementById("doc-title")) >= 4.5, "The document title must stay legible on ivory.");
+    ensure(contrast(win.getComputedStyle(doc.querySelector(".brand-text h1")).color, win.getComputedStyle(doc.querySelector(".appbar")).backgroundColor) >= 4.5, "The app bar title must stay legible on black.");
+    ensure(onPanel(doc.getElementById("doc-title")) >= 4.5, "The document title must stay legible on the dark panel.");
     ensure(onPanel(doc.getElementById("doc-meta")) >= 4.5, "Secondary metadata must stay legible.");
     ensure(onPanel(doc.getElementById("choose-messages")) >= 4.5, "Links must stay legible.");
     const primary = doc.getElementById("primary");
     const primaryStyle = win.getComputedStyle(primary);
-    ensure(contrast(primaryStyle.color, primaryStyle.backgroundColor) >= 4.5, "The primary action label must stay legible on plum.");
-    ensure(body === "rgb(255, 249, 246)", `The workspace must stay on soft ivory (got ${body}).`);
+    ensure(contrast(primaryStyle.color, primaryStyle.backgroundColor) >= 4.5, "The primary action label must stay legible on flame orange.");
+    ensure(body === "rgb(0, 0, 0)", `The workspace must stay on jet black (got ${body}).`);
     frame.remove();
   });
 
@@ -1067,6 +1161,52 @@
     ensure(/\.sub \{[^}]*border-bottom: 1px solid var\(--line\)/.test(rules), "Headings must be type hierarchy plus a hairline rule.");
     ensure(/\.figure \{[^}]*background: var\(--paper\)/.test(rules), "Images must not sit on a coloured plate.");
     ensure(!/nth-child\(even\)::before/.test(rules), "List bullets must not alternate interface colours.");
+  });
+
+  await check("Documents open on the conversation, without a cover or branding", () => {
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(chat), "text/html");
+    ensure(!doc.querySelector(".cover"), "A title page must be opt-in.");
+    ensure(doc.querySelector(".sheet.doc .doc-head .doc-title"), "The first page must open with the conversation title.");
+    ensure(!doc.querySelector(".doc-runhead, .doc-runfoot"), "No running header or footer may repeat the metadata.");
+    ensure(!/\bExported (with|via) AI Exporter\b/i.test(doc.body.textContent), "The document must carry no exporter branding.");
+    ensure(doc.querySelector(".sheet.doc .turn"), "The first page must carry conversation content.");
+    const meta = doc.querySelector(".doc-meta").textContent;
+    ensure(meta.includes("message"), "One metadata line must summarise the source.");
+    ensure(!/PDF \(|A4|Portrait|Landscape/i.test(meta), "Export format and page geometry are not document metadata.");
+  });
+
+  await check("An opt-in title page still renders before the content", () => {
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(chat, { includeCover: true }), "text/html");
+    ensure(doc.querySelector(".sheet.cover"), "An explicit title page must render.");
+    ensure(doc.querySelector(".sheet.cover + .sheet.doc"), "The title page must precede the conversation.");
+  });
+
+  await check("Display maths is document text, not a tinted panel", () => {
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(chat), "text/html");
+    const rules = [...doc.querySelectorAll("style")].map((style) => style.textContent).join("\n");
+    ensure(/\.math \{[^}]*background: transparent/.test(rules), "Ordinary equations must not sit in a grey container.");
+    ensure(/\.math \{[^}]*padding: 0/.test(rules), "Equations must not carry panel padding.");
+    ensure(/\.math \{[^}]*color: var\(--ink\)/.test(rules), "Equations must be set in body ink.");
+    ensure(!/\.turn \{[^}]*border-bottom: 1px dashed/.test(rules), "Turns must be separated by space, not repeated rules.");
+    ensure(/\.doc-title \{[^}]*color: var\(--head-ink\)/.test(rules), "The document title must use the heading colour.");
+    ensure(exporter.THEMES.light.headInk === "#17324d", "Headings must be navy, body text charcoal.");
+  });
+
+  await check("Word opens on the conversation title and keeps equations plain", () => {
+    const document = docxText();
+    ensure(document.includes('<w:pStyle w:val="Title"/>'), "Word must start with the conversation title.");
+    ensure(!document.includes('<w:br w:type="page"/>'), "No title page may be added by default.");
+    const withCover = docx.parts(chat, { includeCover: true }).files.find((file) => file.name === "word/document.xml").text;
+    ensure(withCover.includes('<w:br w:type="page"/>'), "An opt-in title page must still break before the transcript.");
+    const styles = docx.parts(chat, {}).files.find((file) => file.name === "word/styles.xml").text;
+    const at = styles.indexOf('w:styleId="Formula"');
+    const formula = styles.slice(at, styles.indexOf("</w:style>", at));
+    ensure(at > -1 && formula.length > 0, "The Word formula style must exist.");
+    ensure(!/<w:shd/.test(formula), "Word equations must not be shaded.");
+    ensure(/<w:color w:val="1F2328"/.test(formula), "Word equations must be set in body ink.");
+    const roleAt = styles.indexOf('w:styleId="Role"');
+    const role = styles.slice(roleAt, styles.indexOf("</w:style>", roleAt));
+    ensure(!/<w:shd/.test(role), "Speaker labels must not be tinted bars.");
   });
 
   await check("The export palette and the interface palette are different systems", () => {

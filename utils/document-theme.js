@@ -23,7 +23,7 @@
       stage: "#f2f2f3", paper: "#ffffff", ink: "#1f2328", inkSoft: "#3d4348",
       muted: "#5f666d", line: "#e0e3e6", lineStrong: "#c6cbd0",
       accent: "#2f4a63", accentSoft: "#f2f4f6", accentInk: "#1f2328",
-      headBg: "#ffffff", headInk: "#1f2328", headIcon: "#5f666d",
+      headBg: "#ffffff", headInk: "#17324d", headIcon: "#5f666d",
       codeBg: "#F3F4F6", codeInk: "#24292F", codeHeadBg: "#E9EBEF",
       codeHeadInk: "#24292F", codeLine: "#D1D5DB", codeLineNo: "#8C959F",
       inlineBg: "#EFF1F3", inlineInk: "#1F2328",

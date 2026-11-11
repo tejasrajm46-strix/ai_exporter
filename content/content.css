@@ -12,29 +12,29 @@
   width: 24px !important;
   height: 24px !important;
   margin: 4px 8px 2px 0 !important;
-  border: 1px solid #d9c8cc !important;
-  border-radius: 6px !important;
-  background: #ffffff !important;
+  border: 1px solid #4A4A4A !important;
+  border-radius: 0 !important;
+  background: #000000 !important;
   vertical-align: top !important;
   cursor: pointer !important;
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .aix-select:hover {
-  border-color: #662249 !important;
-  background: #fdf2f4 !important;
+  border-color: #FF5100 !important;
+  background: #171717 !important;
 }
 
 .aix-select__input {
   width: 15px !important;
   height: 15px !important;
   margin: 0 !important;
-  accent-color: #662249 !important;
+  accent-color: #FF5100 !important;
   cursor: pointer !important;
 }
 
 .aix-select:focus-within {
-  outline: 2px solid #662249 !important;
+  outline: 2px solid #FF5100 !important;
   outline-offset: 2px !important;
 }
 
@@ -48,15 +48,15 @@
 }
 
 .aix-host--selectable {
-  border-radius: 12px;
-  outline: 1px dashed rgba(102, 34, 73, 0.5);
+  border-radius: 0;
+  outline: 1px dashed rgba(255, 81, 0, 0.62);
   outline-offset: 4px;
 }
 
 .aix-host--selected {
-  outline: 2px solid #662249;
+  outline: 2px solid #FF5100;
   outline-offset: 4px;
-  background-color: rgba(102, 34, 73, 0.07);
+  background-color: rgba(255, 81, 0, 0.07);
 }
 
 .aix-bar {
@@ -67,13 +67,15 @@
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
-  max-width: min(760px, calc(100vw - 32px));
-  padding: 9px 10px 9px 14px !important;
-  border-radius: 13px !important;
-  background: #1b1931 !important;
-  box-shadow: 0 14px 34px rgba(27, 25, 49, 0.34) !important;
-  color: #fff9f6 !important;
-  font: 500 13px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  max-width: min(780px, calc(100vw - 32px));
+  padding: 10px 11px 10px 15px !important;
+  border: 1px solid #2B2B2B !important;
+  border-left: 4px solid #FF5100 !important;
+  border-radius: 0 !important;
+  background: #000000 !important;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.65) !important;
+  color: #FFFFFF !important;
+  font: 500 13px/1.4 "Inter", system-ui, -apple-system, sans-serif !important;
   transform: translateX(-50%) !important;
   animation: aix-rise 180ms ease-out both;
 }
@@ -88,72 +90,91 @@
 }
 
 .aix-bar__bulk-button {
-  height: 30px !important;
-  padding: 0 9px !important;
-  border: 1px solid rgba(253, 243, 245, 0.4) !important;
-  border-radius: 7px !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  color: #fff9f6 !important;
-  font: 600 12px/1 "Segoe UI", system-ui, sans-serif !important;
+  height: 32px !important;
+  padding: 0 10px !important;
+  border: 1px solid #4A4A4A !important;
+  border-radius: 0 !important;
+  background: #171717 !important;
+  color: #FFE4D6 !important;
+  font: 600 11px/1 "Inter", system-ui, sans-serif !important;
+  letter-spacing: 0.02em !important;
   cursor: pointer !important;
 }
 
+.aix-bar__bulk-button:hover {
+  border-color: #FF5100 !important;
+  background: #242424 !important;
+}
+
 .aix-bar__bulk-button:focus-visible {
-  outline: 2px solid #ed9659 !important;
+  outline: 2px solid #FF5100 !important;
   outline-offset: 2px !important;
 }
 
 .aix-bar__format {
   max-width: 190px;
-  height: 30px !important;
-  padding: 0 6px !important;
-  border: 1px solid rgba(253, 243, 245, 0.4) !important;
-  border-radius: 7px !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  color: #fff9f6 !important;
-  font: inherit !important;
+  height: 32px !important;
+  padding: 0 7px !important;
+  border: 1px solid #4A4A4A !important;
+  border-radius: 0 !important;
+  background: #171717 !important;
+  color: #FFE4D6 !important;
+  font: 500 11px/1 "Inter", system-ui, sans-serif !important;
 }
 
 .aix-bar__format option {
-  color: #0f172a;
+  color: #000000;
+  background: #FFFFFF;
 }
 
 .aix-bar__go,
 .aix-bar__exit {
-  height: 30px !important;
-  padding: 0 12px !important;
-  border-radius: 7px !important;
-  font: 600 13px/1 "Segoe UI", system-ui, sans-serif !important;
+  height: 32px !important;
+  padding: 0 13px !important;
+  border-radius: 0 !important;
+  font: 700 11px/1 "Space Grotesk", "Arial Black", sans-serif !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
   cursor: pointer !important;
   white-space: nowrap;
 }
 
 .aix-bar__go {
   border: 0 !important;
-  background: #ed9659 !important;
-  color: #1b1931 !important;
+  background: #FF5100 !important;
+  color: #000000 !important;
+}
+
+.aix-bar__go:hover {
+  background: #FFFFFF !important;
+  color: #000000 !important;
 }
 
 .aix-bar__go:disabled {
   cursor: not-allowed !important;
-  opacity: 0.6 !important;
+  opacity: 0.55 !important;
 }
 
 .aix-bar__exit {
-  border: 1px solid rgba(253, 243, 245, 0.45) !important;
+  border: 1px solid #4A4A4A !important;
   background: transparent !important;
-  color: #fff9f6 !important;
+  color: #FFE4D6 !important;
+}
+
+.aix-bar__exit:hover {
+  border-color: #FF5100 !important;
+  background: #171717 !important;
 }
 
 .aix-bar__go:focus-visible,
 .aix-bar__exit:focus-visible,
 .aix-bar__format:focus-visible {
-  outline: 2px solid #ed9659 !important;
+  outline: 2px solid #FF5100 !important;
   outline-offset: 2px !important;
 }
 
 .aix-bar--idle {
-  padding: 8px 10px 8px 14px !important;
+  padding: 9px 11px 9px 15px !important;
 }
 
 .aix-bar--idle .aix-bar__count {
@@ -175,15 +196,17 @@
 .aix-toast {
   position: fixed !important;
   left: 50% !important;
-  bottom: 76px !important;
+  bottom: 80px !important;
   z-index: 2147483001 !important;
-  max-width: min(520px, calc(100vw - 32px));
-  padding: 10px 14px !important;
-  border-radius: 10px !important;
-  background: #1b1931 !important;
-  color: #f8fafc !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.3) !important;
-  font: 500 13px/1.45 "Segoe UI", system-ui, sans-serif !important;
+  max-width: min(540px, calc(100vw - 32px));
+  padding: 11px 14px !important;
+  border: 1px solid #2B2B2B !important;
+  border-left: 4px solid #FF5100 !important;
+  border-radius: 0 !important;
+  background: #000000 !important;
+  color: #FFE4D6 !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.72) !important;
+  font: 500 12px/1.45 "Inter", system-ui, sans-serif !important;
   opacity: 0;
   pointer-events: none !important;
   transform: translate(-50%, 8px) !important;
@@ -196,7 +219,9 @@
 }
 
 .aix-toast--error {
-  background: #7f1d1d !important;
+  border-color: #FF5100 !important;
+  background: #FF5100 !important;
+  color: #000000 !important;
 }
 
 @keyframes aix-rise {

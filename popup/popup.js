@@ -62,6 +62,7 @@
     ui.status.textContent = message;
     ui.status.classList.toggle("is-error", tone === "error");
     ui.status.classList.toggle("is-success", tone === "success");
+    ui.status.classList.toggle("is-warning", tone === "warning");
   }
 
   function setFormatsEnabled(enabled) {
@@ -211,6 +212,13 @@
       }
       state.chat = response.chat;
       renderChat();
+      const coverage = response.chat.coverage;
+      if (coverage && coverage.unreadable > 0) {
+        setStatus(
+          `Partial extraction: ${coverage.unreadable} message${coverage.unreadable === 1 ? "" : "s"} could not be read from this page. Check the preview before exporting.`,
+          "warning"
+        );
+      }
     } catch {
       showUnavailable(
         "Page not ready",

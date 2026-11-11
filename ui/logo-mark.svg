@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">AI Exporter Studio</title>
+  <rect width="256" height="256" fill="#000000"/>
+  <path fill="#FFFFFF" d="M48 48h144v32H80v32h144v32H80v32h96v32H48z"/>
+  <rect x="80" y="112" width="144" height="32" fill="#FF5100"/>
+</svg>

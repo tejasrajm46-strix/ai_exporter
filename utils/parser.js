@@ -281,6 +281,86 @@
 
   /* ----------------------------------------------------------- math and code */
 
+  /* Sites hand mathematics over in several notations. KaTeX markup is read in
+     inlineOf, but plain text copies still arrive as \(...\), \[...\], $...$
+     or $$...$$. Exporters only understand $...$ inline and formula blocks, so
+     canonicalise at the source rather than letting TeX commands leak into the
+     document as prose. */
+  function mathSource(tex) {
+    return String(tex == null ? "" : tex)
+      .replace(/\s*\r?\n\s*/g, " ")
+      .replace(/^\s*\\\[|\\\]\s*$/g, "")
+      .replace(/^\s*\\\(|\\\)\s*$/g, "")
+      .replace(/^\s*\$\$?|\$\$?\s*$/g, "")
+      .trim();
+  }
+
+  function normalizeInlineMath(text) {
+    return String(text == null ? "" : text)
+      .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => {
+        const source = mathSource(tex);
+        return source ? ` $${source}$ ` : "";
+      })
+      .replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => {
+        const source = mathSource(tex);
+        return source ? ` $${source}$ ` : "";
+      });
+  }
+
+  const DISPLAY_MATH = /\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$/g;
+
+  /* Display maths belongs in its own block: split it out of the paragraph that
+     carried the delimiters instead of rendering it inline. */
+  function splitDisplayMath(text) {
+    const source = String(text == null ? "" : text);
+    const parts = [];
+    let last = 0;
+    let match;
+    DISPLAY_MATH.lastIndex = 0;
+    while ((match = DISPLAY_MATH.exec(source)) !== null) {
+      const before = source.slice(last, match.index);
+      if (before.trim()) parts.push({ type: "paragraph", text: before });
+      const tex = mathSource(match[1] != null ? match[1] : match[2]);
+      if (tex) parts.push({ type: "formula", tex });
+      last = match.index + match[0].length;
+    }
+    if (!last) return null;
+    const after = source.slice(last);
+    if (after.trim()) parts.push({ type: "paragraph", text: after });
+    return parts.length ? parts : null;
+  }
+
+  function normalizeMathBlocks(blocks) {
+    const out = [];
+    for (const block of blocks || []) {
+      if (block.type === "paragraph") {
+        const parts = splitDisplayMath(block.text);
+        if (parts) {
+          for (const part of parts) {
+            out.push(part.type === "paragraph" ? { ...part, text: normalizeInlineMath(part.text) } : part);
+          }
+          continue;
+        }
+        out.push({ ...block, text: normalizeInlineMath(block.text) });
+      } else if (block.type === "formula") {
+        out.push({ ...block, tex: mathSource(block.tex) });
+      } else if (block.type === "list") {
+        out.push({ ...block, items: (block.items || []).map(normalizeInlineMath) });
+      } else if (block.type === "table") {
+        out.push({
+          ...block,
+          head: (block.head || []).map(normalizeInlineMath),
+          rows: (block.rows || []).map((row) => row.map(normalizeInlineMath))
+        });
+      } else if (block.type === "heading" || block.type === "subheading" || block.type === "quote") {
+        out.push({ ...block, text: normalizeInlineMath(block.text) });
+      } else {
+        out.push(block);
+      }
+    }
+    return out;
+  }
+
   function texOf(element) {
     const annotation = element.querySelector('annotation[encoding="application/x-tex"]');
     if (annotation && annotation.textContent.trim()) return annotation.textContent.trim();
@@ -683,10 +763,18 @@
 
     const consumed = new Set();
     const entries = [];
+    let unreadable = 0;
     for (const candidate of outer) {
-      const blocks = collectBlocks(contentRootFor(candidate.element), consumed);
+      const blocks = normalizeMathBlocks(collectBlocks(contentRootFor(candidate.element), consumed));
       const text = blocksToText(blocks);
-      if (!text && !blocks.length) continue;
+      /* A container that matched a role but yielded nothing is the visible
+         symptom of a partial extraction: a virtualised turn, a redesigned
+         body, a collapsed answer. Count it instead of dropping it in silence,
+         so the popup and the workspace can warn before an export is trusted. */
+      if (!text && !blocks.length) {
+        unreadable += 1;
+        continue;
+      }
       entries.push({
         element: candidate.element,
         role: candidate.role,
@@ -695,6 +783,18 @@
         timestamp: findTimestamp(candidate.element)
       });
     }
+
+    /* Coverage travels with the result but never as message content: a count
+       is enough for the calling UI to say that the page was not fully read. */
+    Object.defineProperty(entries, "coverage", {
+      value: {
+        platform: platform ? platform.id : "unknown",
+        total: outer.length,
+        detected: entries.length,
+        unreadable
+      },
+      enumerable: false
+    });
 
     // Assign stable ids and infer roles that the DOM did not expose.
     let previousRole = "assistant";
@@ -791,8 +891,11 @@
    */
   function parsePage(doc, location_, options) {
     const only = options && options.only ? new Set(Array.from(options.only)) : null;
-    let entries = findMessages(doc, location_);
-    if (only) entries = entries.filter((entry) => only.has(entry.id));
+    const found = findMessages(doc, location_);
+    // Read coverage before the selection filter: it describes the page, not
+    // the subset the reader picked.
+    const coverage = found.coverage || { platform: "unknown", total: found.length, detected: found.length, unreadable: 0 };
+    const entries = only ? found.filter((entry) => only.has(entry.id)) : found;
     const hostname = (location_ && location_.hostname) || (doc.location && doc.location.hostname) || "";
     const platform = platformFor(hostname);
     return {
@@ -803,6 +906,7 @@
       model: detectModel(doc),
       url: (location_ && location_.href) || (doc.location && doc.location.href) || "",
       exportedAt: new Date().toISOString(),
+      coverage,
       messageCount: entries.length,
       messages: entries.map((entry) => entry.message)
     };

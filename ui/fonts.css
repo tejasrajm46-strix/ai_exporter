@@ -1,0 +1,6 @@
+/* Local webfonts. No network request is made at runtime. */
+@font-face { font-family: "Archivo Black"; src: url("fonts/ArchivoBlack.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url("fonts/SpaceGrotesk-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter.woff2") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 400 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "STIX Two Math"; src: url("fonts/STIXTwoMath.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }

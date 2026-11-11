@@ -81,11 +81,20 @@ function sanitizeChat(chat) {
     };
   });
   if (!messages.length) return null;
+  /* Partial-extraction counts are diagnostics, not content: clamped numbers
+     only, so the workspace can warn without carrying page text across. */
+  const coverage = chat.coverage && typeof chat.coverage === "object"
+    ? {
+        unreadable: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.unreadable) || 0))),
+        detected: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.detected) || messages.length)))
+      }
+    : null;
   const exportedAt = text(chat.exportedAt, 40);
   return {
     version: 1, title: text(chat.title, 200) || "AI conversation", platform: text(chat.platform, 40),
     platformLabel: text(chat.platformLabel, 60), model: chat.model ? text(chat.model, 60) : null,
     url: text(chat.url, 2000), exportedAt: exportedAt && Number.isFinite(Date.parse(exportedAt)) ? exportedAt : new Date().toISOString(),
+    coverage,
     messageCount: messages.length, messages
   };
 }
@@ -106,14 +115,56 @@ function byteLength(value) {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => chrome.contextMenus.create({
-    id: contextMenuId, title: "Export this AI chat", contexts: ["page"], documentUrlPatterns: SUPPORTED_PATTERNS
-  }));
-});
+function registerContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: contextMenuId, title: "Export this AI chat", contexts: ["page", "selection", "link", "image"], documentUrlPatterns: SUPPORTED_PATTERNS
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("AI Exporter context menu could not be registered:", chrome.runtime.lastError.message);
+      }
+    });
+  });
+}
+
+/* A tab that was already open when the extension was installed, reloaded or
+   updated has no content script. The popup handles that case by injecting the
+   parser and content script on demand; the context-menu path must do the same,
+   otherwise its message is silently dropped and right-click export does
+   nothing. */
+async function ensureContentScript(tabId) {
+  try {
+    const pong = await chrome.tabs.sendMessage(tabId, { type: "PING" });
+    if (pong && pong.injected) return true;
+  } catch {
+    // Nothing is listening yet; inject below.
+  }
+  try {
+    // The stylesheet may already be present even when the listener is gone;
+    // a CSS failure must not stop the script injection that restores it.
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ["content/content.css"] }).catch(() => {});
+    await chrome.scripting.executeScript({
+      target: { tabId }, files: ["utils/parser.js", "content/content.js"]
+    });
+    const pong = await chrome.tabs.sendMessage(tabId, { type: "PING" });
+    return Boolean(pong && pong.injected);
+  } catch (error) {
+    console.warn("AI Exporter could not attach to this tab:", error);
+    return false;
+  }
+}
+
+chrome.runtime.onInstalled.addListener(registerContextMenu);
+chrome.runtime.onStartup.addListener(registerContextMenu);
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== contextMenuId || !tab || tab.id === undefined) return;
-  chrome.tabs.sendMessage(tab.id, { type: "CONTEXT_EXPORT", format: "pdf" }).catch(() => {});
+  (async () => {
+    if (!(await ensureContentScript(tab.id))) return;
+    const response = await chrome.tabs.sendMessage(tab.id, { type: "CONTEXT_EXPORT", format: "pdf" });
+    if (!response || !response.ok) {
+      console.warn("AI Exporter context-menu export did not start:", response && response.error);
+    }
+  })().catch((error) => console.warn("AI Exporter context-menu export failed:", error));
 });
 
 // Serialize quota checks/writes without making different previews share data.

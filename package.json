@@ -1,0 +1,12 @@
+{
+  "name": "ai-exporter",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "description": "Manifest V3 extension that exports AI conversations from ChatGPT, Claude, Gemini and DeepSeek into local documents.",
+  "license": "MIT",
+  "scripts": {
+    "check": "node tools/check.js",
+    "package": "node tools/package.js"
+  }
+}

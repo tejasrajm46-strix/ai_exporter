@@ -91,6 +91,7 @@
 
   async function openExport(format, ids, view = "") {
     const chat = parser.parsePage(document, location, ids ? { only: ids } : undefined);
+    const unreadable = chat.coverage && chat.coverage.unreadable ? chat.coverage.unreadable : 0;
     if (!chat.messages.length) {
       showToast("Could not detect chat on this page. Please refresh and try again.", true);
       return { ok: false, error: "No conversation detected." };
@@ -112,6 +113,12 @@
 
     if (format && format !== "pdf") showToast("Export view opened - your download is starting there.");
     else showToast("Export view opened. Use Save as PDF to download.");
+    if (unreadable > 0) {
+      showToast(
+        `${unreadable} message${unreadable === 1 ? "" : "s"} could not be read from this page. Check the preview before exporting.`,
+        true
+      );
+    }
     return { ok: true };
   }
 

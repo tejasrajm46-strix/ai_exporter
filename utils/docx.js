@@ -196,8 +196,28 @@
    * become character runs, so emphasis survives in Word as editable
    * formatting instead of literal asterisks.
    */
+  /* Word has no MathML import, so formulas travel as Cambria Math text. Strip
+     the delimiters and the TeX commands first: a Word file full of backslashes
+     is not a readable mathematical document either. */
+  function mathSource(value) {
+    return String(value == null ? "" : value).trim()
+      .replace(/^\$\$([\s\S]*)\$\$$/, "$1")
+      .replace(/^\\\[([\s\S]*)\\\]$/, "$1")
+      .replace(/^\\\(([\s\S]*)\\\)$/, "$1")
+      .replace(/^\$([\s\S]*)\$$/, "$1")
+      .trim();
+  }
+
+  function wordMath(tex) {
+    const source = mathSource(tex);
+    const exporter = globalThis.AIExporter;
+    return exporter && typeof exporter.texToPlain === "function" ? exporter.texToPlain(source) : source;
+  }
+
   function inline(text, base = {}, codeShading) {
-    const source = String(text == null ? "" : text);
+    const source = String(text == null ? "" : text)
+      .replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => " " + "$" + tex + "$" + " ")
+      .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => " " + "$" + tex + "$" + " ");
     const pattern = /(\*\*[^*]+\*\*|\$[^$\n]+\$|`[^`]+`|\*[^*\n]+\*)/g;
     let out = "";
     let last = 0;
@@ -207,7 +227,7 @@
       const token = match[0];
       if (token.startsWith("**")) out += run(token.slice(2, -2), { ...base, bold: true });
       else if (token.startsWith("`")) out += run(token.slice(1, -1), { ...base, mono: true, shading: codeShading });
-      else if (token.startsWith("$")) out += run(token.slice(1, -1), { ...base, math: true });
+      else if (token.startsWith("$")) out += run(wordMath(token.slice(1, -1)), { ...base, math: true });
       else out += run(token.slice(1, -1), { ...base, italic: true });
       last = match.index + token.length;
     }
@@ -278,7 +298,7 @@ ${style({ id: "Normal", name: "Normal" })}
 ${style({
       id: "Title", name: "Title", next: "Subtitle",
       pPr: '<w:spacing w:before="0" w:after="120" w:line="240" w:lineRule="auto"/>',
-      rPr: `<w:b/><w:bCs/><w:color w:val="${palette.ink}"/><w:sz w:val="52"/><w:szCs w:val="52"/>`
+      rPr: `<w:b/><w:bCs/><w:color w:val="${palette.headInk}"/><w:sz w:val="52"/><w:szCs w:val="52"/>`
     })}
 ${style({
       id: "Subtitle", name: "Subtitle", next: "Normal",
@@ -297,12 +317,12 @@ ${style({
     })}
 ${style({
       id: "Role", name: "Speaker", next: "Normal",
-      pPr: `<w:keepNext/><w:pBdr><w:top w:val="single" w:sz="4" w:space="8" w:color="${palette.line}"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="${palette.accentSoft}"/><w:spacing w:before="240" w:after="140" w:line="240" w:lineRule="auto"/>`,
+      pPr: `<w:keepNext/><w:spacing w:before="240" w:after="100" w:line="240" w:lineRule="auto"/>`,
       rPr: `<w:b/><w:bCs/><w:caps/><w:color w:val="${palette.accent}"/><w:sz w:val="18"/><w:szCs w:val="18"/>`
     })}
-${heading("Heading1", "heading 1", 1, 30, palette.ink)}
-${heading("Heading2", "heading 2", 2, 26, palette.ink)}
-${heading("Heading3", "heading 3", 3, 23, palette.ink)}
+${heading("Heading1", "heading 1", 1, 30, palette.headInk)}
+${heading("Heading2", "heading 2", 2, 26, palette.headInk)}
+${heading("Heading3", "heading 3", 3, 23, palette.headInk)}
 ${style({
       id: "CodeLabel", name: "Code label", next: "Code",
       pPr: `<w:keepNext/><w:shd w:val="clear" w:color="auto" w:fill="${palette.codeHeadBg}"/><w:spacing w:before="160" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="113" w:right="113"/>`,
@@ -340,8 +360,8 @@ ${style({
     })}
 ${style({
       id: "Formula", name: "Formula", next: "Normal",
-      pPr: `<w:shd w:val="clear" w:color="auto" w:fill="${palette.accentSoft}"/><w:spacing w:before="60" w:after="140" w:line="264" w:lineRule="auto"/><w:ind w:left="113" w:right="113"/><w:jc w:val="center"/>`,
-      rPr: `<w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/><w:color w:val="${palette.accent}"/><w:sz w:val="22"/><w:szCs w:val="22"/>`
+      pPr: `<w:spacing w:before="60" w:after="140" w:line="264" w:lineRule="auto"/><w:ind w:left="113" w:right="113"/><w:jc w:val="center"/>`,
+      rPr: `<w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/><w:color w:val="${palette.ink}"/><w:sz w:val="22"/><w:szCs w:val="22"/>`
     })}
 ${style({
       id: "Caption", name: "Caption", next: "Normal",
@@ -503,29 +523,41 @@ ${style({
       return { ...message, blocks: kept };
     });
 
-    /* cover ---------------------------------------------------------------- */
+    /* title ---------------------------------------------------------------- */
+    // Word follows the same rule as the PDF: the conversation opens the file.
+    // A title page is opt-in and is the only place export metadata appears.
     push(paragraph(inline(chat.title || "AI conversation", {}, palette.inlineBg), { style: "Title" }));
-    push(paragraph(run("Full transcript: every prompt and every answer, in order", { color: palette.muted }), { style: "Subtitle" }));
+    if (!context.includeCover) {
+      const facts = [
+        chat.platformLabel || "AI conversation",
+        chat.model,
+        formatDate(chat.exportedAt, true),
+        `${messages.length} message${messages.length === 1 ? "" : "s"}`
+      ].filter(Boolean).join(" \u00b7 ");
+      push(paragraph(run(facts, { color: palette.muted }), { style: "Meta" }));
+    } else {
+      push(paragraph(run("Full transcript: every prompt and every answer, in order", { color: palette.muted }), { style: "Subtitle" }));
 
-    const meta = [
-      ["Platform", chat.platformLabel || "Unknown"],
-      ["Model", chat.model || "Unknown"],
-      ["Total messages", `${messages.length} message${messages.length === 1 ? "" : "s"}`],
-      ["Exported on", formatDate(chat.exportedAt, true)],
-      ["Format", context.docMode === "bw" ? "Word (.docx), black and white" : "Word (.docx), colour"]
-    ];
-    for (const [label, value] of meta) {
-      push(paragraph(
-        run(label, { bold: true, caps: true, color: palette.muted, size: 16 }) + run(`  ${value}`, { bold: true }),
-        { style: "Meta" }
-      ));
-    }
-    if (/^https:\/\//i.test(chat.url || "")) {
-      push(paragraph(run("Source  ", { bold: true, caps: true, color: palette.muted, size: 16 }) + run(chat.url, { color: palette.muted }), { style: "Meta" }));
-    }
+      const meta = [
+        ["Platform", chat.platformLabel || "Unknown"],
+        ["Model", chat.model || "Unknown"],
+        ["Total messages", `${messages.length} message${messages.length === 1 ? "" : "s"}`],
+        ["Exported on", formatDate(chat.exportedAt, true)],
+        ["Format", context.docMode === "bw" ? "Word (.docx), black and white" : "Word (.docx), colour"]
+      ];
+      for (const [label, value] of meta) {
+        push(paragraph(
+          run(label, { bold: true, caps: true, color: palette.muted, size: 16 }) + run(`  ${value}`, { bold: true }),
+          { style: "Meta" }
+        ));
+      }
+      if (/^https:\/\//i.test(chat.url || "")) {
+        push(paragraph(run("Source  ", { bold: true, caps: true, color: palette.muted, size: 16 }) + run(chat.url, { color: palette.muted }), { style: "Meta" }));
+      }
 
-    // The transcript opens on its own page, like the PDF cover.
-    push(paragraph('<w:r><w:br w:type="page"/></w:r>', { style: "Normal" }));
+      // The transcript opens on the page after the title page.
+      push(paragraph('<w:r><w:br w:type="page"/></w:r>', { style: "Normal" }));
+    }
 
     /* transcript ----------------------------------------------------------- */
     if (!messages.length) {
@@ -540,7 +572,7 @@ ${style({
       push(paragraph(
         run(roleLabel(message.role), { bold: true, caps: true, color: palette.accent, size: 18 }) +
         (stamp ? run(stamp, { color: palette.muted, size: 16 }) : ""),
-        { style: "Role", keepNext: true, shading: palette.accentSoft, before: index === 0 ? 0 : 240 }
+        { style: "Role", keepNext: true, before: index === 0 ? 0 : 240 }
       ));
       /* The same MCQ grouping the HTML uses, so Word gets one paragraph per
          option instead of a run-on line. */
@@ -637,9 +669,10 @@ ${style({
         case "image":
           out.push(imageXml(block, context));
           break;
-        case "formula":
-          out.push(paragraph(run(block.tex, { math: true, color: palette.accent }), { style: "Formula" }));
+        case "formula": {
+          out.push(paragraph(run(wordMath(block.tex), { math: true, color: palette.ink }), { style: "Formula" }));
           break;
+        }
         case "divider":
           out.push(paragraph("", {
             style: "Normal",
@@ -744,9 +777,9 @@ ${style({
     const row = (cells, isHeader) =>
       `<w:tr><w:trPr><w:cantSplit/>${isHeader ? "<w:tblHeader/>" : ""}</w:trPr>${Array.from({ length: columns }, (_, index) => cell(cells[index], isHeader, widths[index])).join("")}</w:tr>`;
 
-    const borders = ["top", "left", "bottom", "right", "insideH", "insideV"]
-      .map((side) => `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="${palette.line}"/>`)
-      .join("");
+    // Minimal rules: a top and bottom edge plus row separators. Vertical
+    // lines are most of a table's visual clutter on paper.
+    const borders = `<w:top w:val="single" w:sz="6" w:space="0" w:color="${palette.line}"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="${palette.line}"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="${palette.line}"/><w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
     const grid = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join("");
     const headerRow = head.length ? row(head, true) : "";
     const bodyRows = rows.map((cells) => row(Array.isArray(cells) ? cells : [], false)).join("");
@@ -856,6 +889,7 @@ ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.ope
       type: typeSettings(options),
       timestamps: options.timestamps === true,
       keepBlocks: options.keepBlocks !== false,
+      includeCover: options.includeCover === true,
       images: imageSettings(options),
       media: [],
       orderedLists: [],

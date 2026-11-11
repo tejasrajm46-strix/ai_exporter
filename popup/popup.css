@@ -1,26 +1,9 @@
 :root {
-  color-scheme: light;
-  --ink: #1b1931;
-  --ink-soft: #3d3453;
-  --muted: #77717f;
-  --line: #eadfd8;
-  --paper: #ffffff;
-  --wash: #fff9f6;
-  /* brand: plum leads on ivory surfaces, amber is the mark, burgundy is the
-     secondary accent, green stays reserved for "supported" and success */
-  --brand: #44174e;
-  --brand-deep: #1b1931;
-  --brand-ink: #662249;
-  --burgundy: #662249;
-  --gold: #ed9659;
-  --tint: #f7e6ec;
-  --tint-2: #e9bcc9;
-  --ok: #2c6a4f;
-  --ok-tint: #e9f4ee;
-  --error: #a34054;
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  color-scheme: dark;
+  font-family: var(--font-ui);
   font-size: 13px;
 }
+
 
 * {
   box-sizing: border-box;
@@ -39,6 +22,7 @@ body {
   margin: 0;
   background: var(--wash);
   color: var(--ink);
+  font-family: var(--font-ui);
 }
 
 button,
@@ -107,7 +91,7 @@ summary:focus-visible {
 }
 
 .brand-copy h1 {
-  font-family: "Newsreader", "Iowan Old Style", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -149,10 +133,10 @@ summary:focus-visible {
 .section-heading h2 {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -184,11 +168,14 @@ summary:focus-visible {
 }
 
 .conversation-name {
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 14px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 15px;
   font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .conversation-meta {
@@ -216,7 +203,13 @@ summary:focus-visible {
 
 /* sections */
 .block {
-  margin-top: 16px;
+  margin-top: 14px;
+}
+
+/* `hidden` must win over the block's own display rule: the review actions only
+   belong on screen while "Selected messages" is the chosen scope. */
+.scope-actions[hidden] {
+  display: none;
 }
 
 .block-note {
@@ -546,12 +539,13 @@ summary:focus-visible {
   padding: 10px 16px 14px;
   border-top: 1px solid var(--line);
   background: var(--wash);
+  box-shadow: 0 -8px 18px rgba(68, 23, 78, 0.06);
 }
 
 .primary-action {
   display: flex;
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -584,6 +578,10 @@ summary:focus-visible {
   font-size: 10.5px;
   text-align: center;
 }
+
+/* Partial extraction is a warning, not a failure: the conversation is
+   usable, but the reader should check the preview before trusting it. */
+.status-message.is-warning { color: #8a5a12; }
 
 @media (prefers-reduced-motion: no-preference) {
   .app-shell {

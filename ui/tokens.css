@@ -1,0 +1,111 @@
+/* AI Exporter Studio — application chrome tokens.
+   The exported document palette lives in utils/document-theme.js and is
+   deliberately not defined here: interface themes must never restyle paper. */
+:root {
+  color-scheme: dark;
+
+  /* Official editorial palette */
+  --black: #000000;
+  --white: #FFFFFF;
+  --flame: #FF5100;
+  --charcoal: #171717;
+  --grey: #A6A6A6;
+  --pale: #FFE4D6;
+
+  /* Surfaces */
+  --surface-1: #0A0A0A;
+  --surface-2: #171717;
+  --surface-3: #242424;
+  --surface: var(--surface-1);
+  --card: var(--surface-2);
+  --paper: var(--charcoal);
+  --wash: var(--black);
+  --bg: var(--black);
+  --bg-grid: rgba(255, 81, 0, 0.055);
+
+  /* Ink and rules */
+  --text-primary: var(--white);
+  --text-secondary: var(--grey);
+  --text-muted: var(--grey);
+  --text-disabled: #6F6F6F;
+  --ink: var(--text-primary);
+  --ink-soft: var(--text-secondary);
+  --muted: var(--text-muted);
+  --text: var(--text-primary);
+  --text-soft: var(--text-secondary);
+  --line: #2B2B2B;
+  --border-subtle: #2B2B2B;
+  --border-strong: #4A4A4A;
+  --border: var(--border-subtle);
+
+  /* Accent states */
+  --accent: var(--flame);
+  --accent-ink: var(--black);
+  --accent-soft: rgba(255, 81, 0, 0.14);
+  --accent-border: rgba(255, 81, 0, 0.58);
+  --brand: var(--flame);
+  --brand-deep: #C63F00;
+  --brand-ink: var(--pale);
+
+  --ok: var(--pale);
+  --ok-soft: rgba(255, 228, 214, 0.1);
+  --ok-border: rgba(255, 228, 214, 0.36);
+  --ok-tint: var(--ok-soft);
+  --warn: var(--pale);
+  --warn-soft: rgba(255, 228, 214, 0.08);
+  --warn-border: rgba(255, 228, 214, 0.32);
+  --danger: var(--flame);
+  --danger-soft: rgba(255, 81, 0, 0.12);
+  --danger-border: rgba(255, 81, 0, 0.42);
+  --error: var(--danger);
+
+  /* Type system */
+  --font-display: "Archivo Black", "Arial Black", Impact, sans-serif;
+  --font-heading: "Space Grotesk", "Arial Black", Arial, sans-serif;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --font-math: "STIX Two Math", "Cambria Math", "STIXGeneral", serif;
+  --font-serif: var(--font-display);
+
+  /* Rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Hard-edged geometry, never a soft SaaS card */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-pill: 999px;
+  --radius: 0px;
+
+  --shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.045);
+  --shadow-md: 0 18px 50px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 30px 90px rgba(0, 0, 0, 0.82);
+  --shadow-paper: 0 0 0 1px #2B2B2B, 0 34px 90px rgba(0, 0, 0, 0.82);
+
+  --transition: 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --transition-fast: 130ms cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Compatibility aliases used by the base component sheets. Values are all
+     part of the editorial palette so no retired colour can leak through. */
+  --navy: var(--black);
+  --ivory: var(--pale);
+  --plum: var(--charcoal);
+  --amber: var(--pale);
+  --blush: var(--flame);
+  --rose: var(--flame);
+  --violet: var(--flame);
+  --violet-soft: rgba(255, 81, 0, 0.12);
+  --violet-border: rgba(255, 81, 0, 0.42);
+  --gold: var(--pale);
+  --burgundy: var(--brand-deep);
+  --blue-soft: var(--flame);
+  --blue-pale: var(--pale);
+  --tint: var(--accent-soft);
+  --tint-2: var(--accent-border);
+}

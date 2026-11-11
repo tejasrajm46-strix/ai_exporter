@@ -58,6 +58,7 @@
     highlightToggle: byId("highlight"),
     remoteToggle: byId("remote-images"),
     imageNotice: byId("image-notice"),
+    coverageNote: byId("coverage-note"),
     includeImages: byId("include-images"),
     includeDiagrams: byId("include-diagrams"),
     keepImagePositions: byId("keep-image-positions"),
@@ -66,6 +67,7 @@
     imageLayout: byId("image-layout"),
     imageQuality: byId("image-quality"),
     qualityNote: byId("quality-note"),
+    includeCover: byId("include-cover"),
     pageSize: byId("page-size"),
     orientation: byId("orientation"),
     margin: byId("margin"),
@@ -124,6 +126,7 @@
     includeCaptions: true, includeImageSources: false, imageLayout: "center", imageQuality: "standard",
     pageSize: "a4", orientation: "portrait", margin: "normal", keepBlocks: true,
     bodyFont: "sans", monoFont: "jetbrains", fontSize: "comfortable", lineHeight: "normal", paragraphSpacing: "normal",
+    includeCover: false,
     format: null, filename: "", excludedAssets: []
   };
 
@@ -134,6 +137,7 @@
     includeImages: true, includeDiagrams: true, keepImagePositions: true,
     includeCaptions: true, includeImageSources: false, imageLayout: "center", imageQuality: "standard",
     pageSize: "a4", orientation: "portrait", margin: "normal", keepBlocks: true,
+    includeCover: false,
     bodyFont: "sans", monoFont: "jetbrains", fontSize: "comfortable", lineHeight: "normal", paragraphSpacing: "normal"
   };
 
@@ -206,6 +210,7 @@
       orientation: source.orientation === "landscape" ? "landscape" : "portrait",
       margin: exporter.PAGE_MARGINS[source.margin] ? source.margin : "normal",
       keepBlocks: source.keepBlocks !== false,
+      includeCover: source.includeCover === true,
       bodyFont: exporter.BODY_FONTS[source.bodyFont] ? source.bodyFont : "sans",
       monoFont: exporter.MONO_FONTS[source.monoFont] ? source.monoFont : "jetbrains",
       fontSize: ["compact", "comfortable", "large"].includes(source.fontSize) ? source.fontSize : "comfortable",
@@ -221,7 +226,7 @@
       if (!source || typeof source !== "object") continue;
       if (["light", "dark", "print"].includes(source.theme)) merged.theme = source.theme;
       if (["color", "bw"].includes(source.docMode)) merged.docMode = source.docMode;
-      for (const key of ["timestamps", "highlight", "includeImages", "includeDiagrams", "keepImagePositions", "includeCaptions", "includeImageSources", "keepBlocks"]) {
+      for (const key of ["timestamps", "highlight", "includeImages", "includeDiagrams", "keepImagePositions", "includeCaptions", "includeImageSources", "keepBlocks", "includeCover"]) {
         if (typeof source[key] === "boolean") merged[key] = source[key];
       }
       for (const key of ["format", "filename"]) {
@@ -288,6 +293,7 @@
         orientation: options.orientation,
         margin: options.margin,
         keepBlocks: options.keepBlocks,
+        includeCover: options.includeCover,
         bodyFont: options.bodyFont,
         monoFont: options.monoFont,
         fontSize: options.fontSize,
@@ -485,6 +491,7 @@
       ? "PNG detail applies to the PNG raster export. Every other format embeds each original asset at full resolution."
       : "PNG detail only applies to the PNG export.";
 
+    setControlDisabled(ui.includeCover, !settings.page, "This format has no title page.");
     const pageFields = [ui.pageSize, ui.orientation, ui.margin, ui.keepBlocks];
     for (const field of pageFields) setControlDisabled(field, !settings.page, "This format has no page geometry.");
     const typeFields = [ui.bodyFont, ui.monoFont, ui.fontSize, ui.lineSpacing, ui.paraSpacing];
@@ -960,7 +967,7 @@
     for (const input of document.querySelectorAll(
       '.format-card input, .theme-chip input, #pick-list input, #doc-mode, #filename,' +
       '#include-images, #include-diagrams, #keep-image-positions, #include-captions, #include-image-sources, #image-layout,' +
-      '#image-quality, #page-size, #orientation, #margin, #body-font, #mono-font, #font-size, #line-spacing, #para-spacing,' +
+      '#image-quality, #include-cover, #page-size, #orientation, #margin, #body-font, #mono-font, #font-size, #line-spacing, #para-spacing,' +
       '#timestamps, #highlight, #remote-images, #pick-search'
     )) {
       input.disabled = value;
@@ -1375,6 +1382,13 @@
       if (!doc || !doc.body || !String(doc.body.textContent || "").trim()) {
         throw new Error("The rendered document is empty, so it was not sent to the print dialog.");
       }
+      /* MathML is static, but the text faces still load asynchronously. Printing
+         before they settle can reflow the page under the dialog. */
+      if (doc.fonts && doc.fonts.ready) await doc.fonts.ready.catch(() => {});
+      const unrenderedMath = doc.querySelectorAll("[data-tex-error]").length;
+      const mathWarning = unrenderedMath
+        ? ` ${unrenderedMath} mathematical expression${unrenderedMath === 1 ? "" : "s"} could not be rendered; the original source is shown in the document.`
+        : "";
       markStage(3, "done");
 
       const pages = estimatePages();
@@ -1387,11 +1401,12 @@
       } catch {
         throw new Error("This browser blocked the print dialog. Open the document in a tab and print from there.");
       }
-      setStatus("Print dialog open. Choose 'Save as PDF', keep 'Background graphics' on, and untick 'Headers and footers'.", "ok");
+      setStatus(`Print dialog open. Choose 'Save as PDF', keep 'Background graphics' on, and untick 'Headers and footers'.${mathWarning}`, unrenderedMath ? "warning" : "ok");
       showInfo(
         `Suggested file name: ${name}.pdf\n` +
         `Paper: ${page.sizeLabel} ${page.orientation}, ${pages > 1 ? `~${pages} pages` : "1 page"} estimated.\n` +
         (report.message ? `${report.message}\n` : "") +
+        (mathWarning ? `${mathWarning.trim()}\n` : "") +
         "The print dialog chooses the final file name and page count. If it did not appear, open the document in a tab and print from there."
       );
     } catch (error) {
@@ -1551,7 +1566,8 @@
     for (const [input, key] of [
       [ui.includeImages, "includeImages"],
       [ui.includeDiagrams, "includeDiagrams"],
-      [ui.keepImagePositions, "keepImagePositions"]
+      [ui.keepImagePositions, "keepImagePositions"],
+      [ui.includeCover, "includeCover"]
     ]) {
       input.addEventListener("change", () => {
         options[key] = input.checked;
@@ -1676,6 +1692,7 @@
     ui.highlightToggle.checked = options.highlight !== false;
     ui.remoteToggle.checked = false;
     ui.includeImages.checked = options.includeImages !== false;
+    ui.includeCover.checked = options.includeCover === true;
     ui.includeDiagrams.checked = options.includeDiagrams !== false;
     ui.keepImagePositions.checked = options.keepImagePositions !== false;
     ui.includeCaptions.checked = options.includeCaptions !== false;
@@ -1745,6 +1762,17 @@
     ui.empty.hidden = true;
     tagAssets();
     paintSettings();
+
+    /* The parser counts message containers it recognised but could not read.
+       Saying so here is the difference between an incomplete export and an
+       export the reader was warned about. */
+    const coverage = chat.coverage || null;
+    if (coverage && coverage.unreadable > 0) {
+      ui.coverageNote.hidden = false;
+      ui.coverageNote.textContent = `This page was not read completely: ${coverage.unreadable} message container${
+        coverage.unreadable === 1 ? "" : "s"
+      } could not be extracted. Check the preview before exporting.`;
+    }
 
     selectedFormat = FORMATS[options.format] ? options.format : "pdf";
     const formatInput = document.querySelector(`input[name="format"][value="${selectedFormat}"]`);

@@ -30,7 +30,10 @@
   }
 
   function plainInline(text) {
-    return String(text == null ? "" : text)
+    return joinMathLines(String(text == null ? "" : text))
+      .replace(/\\\[([\s\S]+?)\\\]/g, "$1")
+      .replace(/\\\(([\s\S]+?)\\\)/g, "$1")
+      .replace(/\$\$([\s\S]+?)\$\$/g, "$1")
       .replace(/\*\*/g, "")
       .replace(/`/g, "")
       .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1$2")
@@ -44,27 +47,49 @@
     return globalThis.AIMcq ? globalThis.AIMcq.foldMath(text) : text;
   }
 
+  /* One visible failure mode for mathematics: preserve the source, mark it, and
+     say why it is source. It must never look like a successfully typeset
+     equation, and it must never be silently printed as if it were one. */
+  function mathErrorHtml(tex) {
+    const source = String(tex == null ? "" : tex);
+    return `<span class="tex tex--error" data-tex-error="1" title="This expression could not be rendered as mathematics; the original TeX source is shown.">${escapeHtml(texToPlain(source) || source)}</span>`;
+  }
+
+  function formatPlain(part) {
+    let out = escapeHtml(part);
+    out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,:;!?]|$)/g, "$1<em>$2</em>");
+    out = out.replace(/`([^`]+)`/g, '<code class="inline">$1</code>');
+    return out;
+  }
+
   function formatInline(text) {
     /* Math is compiled to MathML before the surrounding text is escaped: the
-       TeX source must reach the compiler with its < and & characters intact, so
-       the inline $...$ spans are split out first and everything else is escaped. */
-    return joinMathLines(String(text == null ? "" : text))
-      .split(/(\$[^$\n]+\$)/g)
-      .map((part) => {
-        const math = /^\$([^$\n]+)\$$/.exec(part);
-        if (math) {
-          const mathml = texToMathML(math[1], false);
-          return mathml
-            ? `<span class="math-inline">${mathml}</span>`
-            : `<span class="tex">${escapeHtml(texToPlain(math[1]))}</span>`;
-        }
-        let out = escapeHtml(part);
-        out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-        out = out.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,:;!?]|$)/g, "$1<em>$2</em>");
-        out = out.replace(/`([^`]+)`/g, '<code class="inline">$1</code>');
-        return out;
-      })
-      .join("");
+       TeX source must reach the compiler with its < and & characters intact.
+       Accept every delimiter the sites produce, not only $...$, so a pasted
+       \( ... \) cannot fall through as raw backslashes. */
+    const source = joinMathLines(String(text == null ? "" : text));
+    const pattern = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+\$)/g;
+    let out = "";
+    let last = 0;
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+      out += formatPlain(source.slice(last, match.index));
+      const token = match[0];
+      let tex = token;
+      let display = false;
+      if (token.startsWith("$$")) { tex = token.slice(2, -2); display = true; }
+      else if (token.startsWith("\\[")) { tex = token.slice(2, -2); display = true; }
+      else if (token.startsWith("\\(")) { tex = token.slice(2, -2); }
+      else tex = token.slice(1, -1);
+      const mathml = texToMathML(tex, display);
+      out += mathml
+        ? `<span class="${display ? "math math-display" : "math-inline"}">${mathml}</span>`
+        : mathErrorHtml(tex);
+      last = match.index + token.length;
+    }
+    out += formatPlain(source.slice(last));
+    return out;
   }
 
   function formatDate(iso, withTime) {
@@ -222,6 +247,12 @@
     mathtt: "monospace", boldsymbol: "bold" };
   const TEX_SPACES = { ",": "0.17em", ":": "0.22em", ";": "0.28em", "!": "0.1em", " ": "0.33em" };
   const TEX_OPS = { "-": "\u2212", "*": "\u2217", "'": "\u2032" };
+  /* Matrix-like environments: name to the delimiters that wrap the table. */
+  const MATRIX_ENVS = {
+    matrix: ["", ""], smallmatrix: ["", ""], pmatrix: ["(", ")"], bmatrix: ["[", "]"],
+    Bmatrix: ["{", "}"], vmatrix: ["|", "|"], Vmatrix: ["\u2016", "\u2016"],
+    cases: ["{", ""], array: ["", ""], aligned: ["", ""], align: ["", ""], gathered: ["", ""]
+  };
 
   function mathNode(tag, children, attrs) {
     return { tag, children: children || [], attrs: attrs || {} };
@@ -295,6 +326,76 @@
         pos += 1;
       }
       return text;
+    }
+
+    /* Read a \begin{env} body up to its matching \end{env}. Nested
+       environments and brace groups are tracked so an inner matrix cannot
+       terminate the outer one early. */
+    function readEnvironment(name) {
+      const end = `\\end{${name}}`;
+      const start = pos;
+      let depth = 0;
+      while (pos < src.length) {
+        if (depth === 0 && src.startsWith(end, pos)) {
+          const raw = src.slice(start, pos);
+          pos += end.length;
+          return raw;
+        }
+        if (src.startsWith("\\begin{", pos)) { depth += 1; pos += 7; continue; }
+        if (src.startsWith("\\end{", pos)) { depth = Math.max(0, depth - 1); pos += 5; continue; }
+        if (src[pos] === "{") depth += 1;
+        else if (src[pos] === "}") depth = Math.max(0, depth - 1);
+        pos += 1;
+      }
+      return src.slice(start, pos);
+    }
+
+    /* Split an environment body into rows (\\) and cells (&) at the top
+       level only, so a nested group keeps its own separators. */
+    function matrixRows(raw) {
+      const rows = [];
+      let cells = [];
+      let current = "";
+      let depth = 0;
+      for (let index = 0; index < raw.length; index += 1) {
+        const char = raw[index];
+        if (char === "\\" && /[&%$#_{}[]/.test(raw[index + 1] || "")) {
+          current += char + raw[index + 1];
+          index += 1;
+          continue;
+        }
+        if (char === "\\" && raw[index + 1] === "\\" && depth === 0) {
+          cells.push(current.trim());
+          rows.push(cells);
+          cells = [];
+          current = "";
+          index += 1;
+          const spacing = /^\s*\[[^\]]*\]/.exec(raw.slice(index + 1));
+          if (spacing) index += spacing[0].length;
+          continue;
+        }
+        if (depth === 0 && char === "&") { cells.push(current.trim()); current = ""; continue; }
+        if (char === "{") depth += 1;
+        else if (char === "}") depth = Math.max(0, depth - 1);
+        current += char;
+      }
+      cells.push(current.trim());
+      rows.push(cells);
+      return rows.filter((row) => row.some((cell) => cell !== ""));
+    }
+
+    function matrixNode(env, raw) {
+      const rows = matrixRows(raw);
+      if (!rows.length) return mathNode("mrow", []);
+      const table = mathNode("mtable", rows.map((row) =>
+        mathNode("mtr", row.map((cell) => mathNode("mtd", mathNodes(cell))))
+      ));
+      const [open, close] = MATRIX_ENVS[env] || ["", ""];
+      const children = [];
+      if (open) children.push(mathSymbol(open));
+      children.push(table);
+      if (close) children.push(mathSymbol(close));
+      return mathNode("mrow", children);
     }
 
     function applyVariant(node, variant) {
@@ -385,6 +486,27 @@
         /* A modulo operator needs space on both sides; as an upright
            identifier it would read "numberbmodNumber". */
         case "bmod": return mathNode("mo", [mathText("mod")], { lspace: "0.28em", rspace: "0.28em" });
+        /* Matrix-like environments become a real mtable instead of leaking
+           \begin{...} and & separators into the page. */
+        case "begin": {
+          const env = readRawGroup().trim();
+          if (!Object.prototype.hasOwnProperty.call(MATRIX_ENVS, env)) return null;
+          if (env === "array") readRawGroup(); // column specification
+          return matrixNode(env, readEnvironment(env));
+        }
+        case "end":
+          readRawGroup();
+          return null;
+        /* \pmod m prints "(mod m)". Without this it fell through to three
+           italic identifiers and read as "pmodm". */
+        case "pmod":
+          return mathNode("mrow", [
+            mathNode("mo", [mathText("(")], { lspace: "0.3em" }),
+            mathNode("mi", [mathText("mod")], { mathvariant: "normal" }),
+            mathSpace("0.22em"),
+            readArgument(),
+            mathSymbol(")")
+          ]);
         case "quad": return mathSpace("1em");
         case "qquad": return mathSpace("2em");
         case "limits": case "nolimits": case "displaystyle": case "textstyle": case "left.":
@@ -460,10 +582,20 @@
 
   /* Compile TeX to a MathML string. Empty output means "not usable as maths",
      and the caller falls back to showing the source. */
+  function stripTeXDelimiters(value) {
+    const source = String(value == null ? "" : value).trim();
+    return source
+      .replace(/^\$\$([\s\S]*)\$\$$/, "$1")
+      .replace(/^\\\[([\s\S]*)\\\]$/, "$1")
+      .replace(/^\\\(([\s\S]*)\\\)$/, "$1")
+      .replace(/^\$([\s\S]*)\$$/, "$1")
+      .trim();
+  }
+
   function texToMathML(tex, display) {
     let nodes;
     try {
-      nodes = mathNodes(tex);
+      nodes = mathNodes(stripTeXDelimiters(tex));
     } catch {
       return "";
     }
@@ -654,6 +786,14 @@ body {
 }
 .sheet:last-of-type { break-after: auto; page-break-after: auto; }
 
+/* The document opens on its own title, followed by one metadata line. There is
+   no cover page unless the reader asks for one, and no exporter branding. */
+.doc-head { margin: 0 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--line-strong);
+  break-after: avoid; page-break-after: avoid; }
+.doc-title { margin: 0; color: var(--head-ink); font-family: var(--display); font-size: 26pt;
+  font-weight: 700; line-height: 1.15; }
+.doc-meta { margin: 6px 0 0; color: var(--muted); font-size: 9.5pt; }
+
 /* cover */
 .cover { display: flex; flex-direction: column; background: var(--paper); }
 .cover-mark { margin: 44mm auto 0; text-align: center; }
@@ -681,17 +821,6 @@ body {
   break-after: avoid; break-inside: avoid; page-break-after: avoid; }
 h4.sub, h5.sub, h6.sub { margin: 18px 0 6px; padding-bottom: 0; border-bottom: 0; font-size: 12pt; }
 .sheet p { margin: 0 0 var(--para-space, 11px); }
-/* A document running header and closing line: present on the content sheet
-   only, so the cover stays a cover. */
-.doc-runhead, .doc-runfoot {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  color: var(--muted); font-size: 8.5pt; letter-spacing: 0.03em;
-}
-.doc-runhead { padding-bottom: 7px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
-.doc-runfoot { padding-top: 10px; margin-top: 18px; border-top: 1px solid var(--line); }
-.doc-runhead span, .doc-runfoot span { min-width: 0; overflow-wrap: anywhere; }
-.doc-runhead span:first-child { color: var(--ink-soft); font-weight: 600; }
-.doc-runfoot span:last-child { font-family: var(--mono); font-size: 8pt; }
 .divider { margin: 16px 0; border: 0; border-top: 1px solid var(--line); }
 
 /* lists */
@@ -737,9 +866,19 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--inline-bg)
    browser highlight looked like a dark panel had crept back into the print
    theme. Keep the selection tint pale in both themes. */
 ::selection { background: color-mix(in srgb, var(--accent) 18%, transparent); color: inherit; }
-.tex { font-family: var(--mono); font-style: italic; color: var(--accent-ink); }
-/* Math is real MathML, so the browser styles it; the wrapper only sizes it. */
+.tex { font-family: var(--body); font-style: normal; color: var(--ink);
+  text-decoration: underline dotted; text-underline-offset: 2px; }
+/* Math is real MathML, so the browser styles it; the wrapper only sizes it.
+   Equations are ink, not a brand colour, and carry no panel. */
 .math-inline math, .math math { font-size: 1.06em; }
+.math-inline { color: var(--ink); }
+.math-display { display: block; margin: 10px 0 12px; text-align: center; }
+/* Chrome's MathML does not paint menclose boxes in every engine, so the
+   requested \boxed{} answer gets an explicit rule. */
+.math math menclose[notation="box"], .math-inline math menclose[notation="box"] {
+  border: 0.9pt solid currentColor;
+  padding: 0.12em 0.4em;
+}
 
 /* callouts, tables, figures, math */
 .callout { margin: 0 0 14px; padding: 0; border: 1px solid var(--note-line);
@@ -760,9 +899,9 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--inline-bg)
 .callout--warning p { color: var(--warning-ink); }
 .grid { width: 100%; max-width: 100%; min-width: 0; margin: 0 0 14px; border-collapse: collapse; table-layout: fixed; font-size: 9.5pt;
   break-inside: auto; page-break-inside: auto; }
-.grid th, .grid td { min-width: 0; max-width: 0; padding: 7px 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: normal; }
+.grid th, .grid td { min-width: 0; max-width: 0; padding: 7px 9px; border: 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: normal; }
 .grid .table-cell-text { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: normal; }
-.grid th { background: var(--table-head); color: var(--table-head-ink); font-weight: 700; }
+.grid th { border-bottom: 1px solid var(--line-strong); background: var(--table-head); color: var(--table-head-ink); font-weight: 700; }
 /* Images keep their own aspect ratio and never crop. The panel and its kind
    label make a diagram readable as a figure rather than as loose pixels;
    "inline" reads with the text, "center" is the default plate, "fit" fills the
@@ -787,8 +926,18 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--inline-bg)
 .figure-source { margin: 3px 0 0; color: var(--muted); font-size: 8.5pt; }
 .figure--placeholder { padding: 22px; border: 1px dashed var(--line-strong); border-radius: 8px;
   background: transparent; color: var(--muted); font-size: 9.5pt; text-align: center; }
-.math { margin: 0 0 14px; padding: 12px; border-radius: 8px; background: var(--accent-soft);
-  color: var(--accent-ink); font-size: 12pt; text-align: center; overflow-x: auto; }
+/* Ordinary equations are document text, not callouts: no panel, no fill.
+   Only a \boxed{...} result carries an enclosure, because the source asked
+   for one. */
+.math { margin: 0 0 12px; padding: 0; border-radius: 0; background: transparent;
+  color: var(--ink); font-size: 12.5pt; line-height: 1.35; text-align: center; overflow-x: auto; }
+
+/* Questions and calculation steps: type hierarchy, no card. */
+.question { margin: 18px 0 8px; padding: 0 0 5px; border-bottom: 1px solid var(--line);
+  color: var(--ink); font-size: 13.5pt; font-weight: 700; line-height: 1.35;
+  break-after: avoid; page-break-after: avoid; }
+.step-heading { margin: 14px 0 6px; color: var(--ink-soft); font-size: 11.5pt; font-weight: 600;
+  line-height: 1.4; break-after: avoid; page-break-after: avoid; }
 
 /* multiple-choice questions: one row per option, the letter in its own
    column so a wrapped option aligns with its text. Spacing is in points, so
@@ -808,7 +957,7 @@ html[data-keep="off"] .mcq { break-inside: auto; page-break-inside: auto; }
 
 /* transcript flow */
 .flow { display: block; }
-.turn { padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px dashed var(--line); }
+.turn { padding-bottom: 12px; margin-bottom: 18px; border-bottom: 0; }
 .turn:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
 .turn-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; break-after: avoid; }
 .turn-role { padding: 3px 9px; border: 1px solid var(--line); border-radius: 4px;
@@ -822,7 +971,7 @@ html[data-keep="off"] .mcq { break-inside: auto; page-break-inside: auto; }
 /* print: the sheet chrome is screen dressing, the paper supplies the margins */
 @media print {
   html, body { background: #ffffff; }
-  body { font-size: 10.5pt; line-height: 1.58; }
+  body { font-size: 10.8pt; line-height: 1.5; }
   .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
   .cover { min-height: 0; }
   .cover-mark { margin-top: 12mm; }
@@ -1117,6 +1266,19 @@ ${caption}${source}</figure>`;
 </section>`;
   }
 
+  /* Clean question and step headings. A numbered question or a "Step n" line is
+     document structure, not a card: typography carries it, with at most a
+     hairline rule, and the background stays reserved for warnings and answers. */
+  const QUESTION_HEADING = /^\(([a-h])\)\s+\S[\s\S]*$/i;
+  const STEP_HEADING = /^Step\s+\d+\s*[:.]\s+\S[\s\S]*$/i;
+
+  function paragraphHeading(text) {
+    const value = String(text == null ? "" : text).trim();
+    if (QUESTION_HEADING.test(value)) return `<h3 class="question">${formatInline(value)}</h3>`;
+    if (STEP_HEADING.test(value)) return `<h3 class="step-heading">${formatInline(value)}</h3>`;
+    return "";
+  }
+
   function renderBlock(block, options, state) {
     switch (block.type) {
       case "heading":
@@ -1127,6 +1289,8 @@ ${caption}${source}</figure>`;
       case "mcq":
         return mcqHtml(block);
       case "paragraph": {
+        const heading = paragraphHeading(block.text);
+        if (heading) return heading;
         const note = paragraphCallout(block.text);
         return note ? calloutHtml(note) : `<p>${formatInline(block.text)}</p>`;
       }
@@ -1145,7 +1309,7 @@ ${caption}${source}</figure>`;
         return renderImage(block, state, options);
       case "formula": {
         const mathml = texToMathML(block.tex, true);
-        return `<div class="math">${mathml || `<span class="tex">${escapeHtml(texToPlain(block.tex))}</span>`}</div>`;
+        return `<div class="math">${mathml || mathErrorHtml(block.tex)}</div>`;
       }
       case "divider":
         return '<hr class="divider">';
@@ -1224,6 +1388,9 @@ ${renderBlocks(section.blocks, settings, state)}</article>`;
       // The paged preview doubles as Word and standalone HTML; its cover must
       // name the file the primary action will actually produce.
       format: ["pdf", "docx", "html"].includes(options.format) ? options.format : "pdf",
+      // A cover is an opt-in title page. The document starts with the
+      // conversation unless the reader asks for one.
+      includeCover: options.includeCover === true,
       keepBlocks: options.keepBlocks !== false,
       page,
       type,
@@ -1251,17 +1418,23 @@ ${renderBlocks(section.blocks, settings, state)}</article>`;
 ${figures.map((block) => renderImage(block, state, settings)).join("\n")}
 </div></article>`
       : "";
-    const runHead = `<div class="doc-runhead"><span>${escapeHtml(chat.title || "AI conversation")}</span><span>${escapeHtml(
-      [chat.platformLabel || "AI conversation", formatDate(chat.exportedAt, false)].filter(Boolean).join(" · ")
-    )}</span></div>`;
-    const runFoot = `<div class="doc-runfoot"><span>Exported with AI Exporter Studio</span><span>${(chat.messages || []).length} messages · ${escapeHtml(
-      settings.page.sizeLabel
-    )} ${settings.page.orientation}</span></div>`;
-    const body = `${coverSheet(chat, settings)}
-<article class="sheet doc">
-${runHead}
+    /* One metadata line under the title, and nothing repeated in a running
+       header or footer: export mechanics (format, paper size) are not part of
+       the conversation. */
+    const docHead = `<header class="doc-head"><h1 class="doc-title">${escapeHtml(chat.title || "AI conversation")}</h1><p class="doc-meta">${escapeHtml(
+      [
+        chat.platformLabel || "AI conversation",
+        chat.model,
+        formatDate(chat.exportedAt, false),
+        `${(chat.messages || []).length} message${(chat.messages || []).length === 1 ? "" : "s"}`
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    )}</p></header>`;
+    const body = `${settings.includeCover ? `${coverSheet(chat, settings)}
+` : ""}<article class="sheet doc">
+${docHead}
 <div class="flow">${turns}</div>
-${runFoot}
 </article>
 ${plate}`;
 
@@ -1312,11 +1485,16 @@ ${body}
   }
 
   function markdownInline(value) {
-    return String(value == null ? "" : value)
-      .split(/(\$[^$\n]+\$)/g)
+    const source = String(value == null ? "" : value)
+      .replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => "$$" + tex + "$$")
+      .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => "$" + tex + "$");
+    return source
+      .split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+\$)/g)
       .map((part) => {
+        const display = /^\$\$([\s\S]+?)\$\$$/.exec(part);
+        if (display) return "$$" + markdownMath(display[1]) + "$$";
         const math = /^\$([^$\n]+)\$$/.exec(part);
-        return math ? `$${markdownMath(math[1])}$` : markdownText(part);
+        return math ? "$" + markdownMath(math[1]) + "$" : markdownText(part);
       })
       .join("");
   }
@@ -2200,6 +2378,7 @@ ${body}
   const FORMAT_LABELS = Object.fromEntries(Object.entries(FORMATS).map(([id, meta]) => [id, meta.label]));
 
   globalThis.AIExporter = {
+    texToPlain,
     version: VERSION,
     build,
     FORMATS,

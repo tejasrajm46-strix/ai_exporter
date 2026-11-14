@@ -61,8 +61,8 @@
    * "Chat / Work" layout (rolled out per account, observed dropping every
    * marker above at once): the turn carries data-turn-key, and the message unit
    * carries data-content-search-unit-key whose value ends in ":user" or
-   * ":assistant", e.g. "thread:3:assistant". The role-bearing candidates come
-   * first on purpose - see the pool rule in findMessages.
+   * ":assistant", e.g. "thread:3:assistant". A key on the thread itself makes
+   * that element a wrapper - see the container rule in findMessages.
    */
   const CHATGPT = [
     { selector: "[data-content-search-unit-key]", role: roleFromSearchUnit },
@@ -172,8 +172,19 @@
 
   /* ------------------------------------------------------- inline text model */
 
+  /* Keep emphasis markers in the plain-text projection: a literal "2 * 3" must
+     survive, and so must the asterisks around a bold word. Only balanced pairs
+     are markup. */
   function plainOf(element) {
-    return inlineOf(element).replace(/\*\*/g, "").replace(/\*/g, "").replace(/`/g, "").trim();
+    return stripMarkers(inlineOf(element));
+  }
+
+  function stripMarkers(text) {
+    return String(text)
+      .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+      .replace(/`([^`\n]+)`/g, "$1")
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,:;!?]|$)/g, "$1$2")
+      .trim();
   }
 
   // Visually hidden or aria-hidden nodes (e.g. ChatGPT's "ChatGPT said:" label)
@@ -461,26 +472,51 @@
       for (const cell of tr.children) {
         if (cell.tagName === "TH" || cell.tagName === "TD") cells.push(inlineOf(cell));
       }
-      if (cells.length) rows.push({ cells, header: tr.querySelector("th") !== null });
+      if (!cells.length) continue;
+      // A <th>, or a row inside <thead>, is a heading. A plain first <td> row is
+      // data: promoting it made an ordinary table lose its first record and
+      // repeat it as a header on every printed page.
+      const inHead = tr.parentElement && tr.parentElement.tagName === "THEAD";
+      rows.push({ cells, header: inHead || tr.querySelector("th") !== null });
     }
     if (!rows.length) return null;
     let head = [];
     let body = rows;
-    if (rows[0].header || rows.length > 1) {
+    if (rows[0].header) {
       head = rows[0].cells;
       body = rows.slice(1);
     }
     return { type: "table", head, rows: body.map((row) => row.cells) };
   }
 
+  /* Nested lists keep their shape: one block in document order, with a depth per
+     item (and the ordered/bullet kind of the list each item came from). The old
+     version concatenated every descendant <li> into one item, so "Outer one"
+     and its three children read as the single string "Outer oneInner one...". */
   function listBlock(element) {
     const items = [];
-    for (const li of element.children) {
-      if (li.tagName !== "LI") continue;
-      const text = inlineOf(li);
-      if (text) items.push(text);
-    }
-    return items.length ? { type: "list", ordered: element.tagName === "OL", items } : null;
+    const depths = [];
+    const orders = [];
+    const walkList = (list, level) => {
+      const ordered = list.tagName === "OL";
+      for (const li of list.children) {
+        if (li.tagName !== "LI") continue;
+        const own = li.cloneNode(true);
+        for (const nested of own.querySelectorAll("ul, ol")) nested.remove();
+        const text = inlineOf(own);
+        if (text) {
+          items.push(text);
+          depths.push(level);
+          orders.push(ordered);
+        }
+        for (const child of li.children) {
+          if (child.tagName === "UL" || child.tagName === "OL") walkList(child, level + 1);
+        }
+      }
+    };
+    walkList(element, 0);
+    if (!items.length) return null;
+    return { type: "list", ordered: element.tagName === "OL", items, depths, orders };
   }
 
   /* Visuals arrive as ordinary images: a generated illustration, a chart, a
@@ -728,6 +764,24 @@
   const messageIds = new WeakMap();
   let nextMessageId = 0;
 
+  /* The identity a turn keeps across a re-render. A virtualised thread unmounts
+     and recreates its elements, so an element reference cannot recognise a
+     message that has already been read; the sites' own keys can. */
+  const KEY_ATTRIBUTES = ["data-message-id", "data-content-search-unit-key", "data-turn-key"];
+
+  function identityOf(element) {
+    for (const name of KEY_ATTRIBUTES) {
+      const own = element.getAttribute(name);
+      if (own) return `${name}:${own}`;
+      const inner = element.querySelector(`[${name}]`);
+      if (inner) return `${name}:${inner.getAttribute(name)}`;
+    }
+    // ChatGPT's turn marker carries the turn's position in the thread.
+    const testId = element.getAttribute("data-testid") || "";
+    if (/^conversation-turn-\d+$/.test(testId)) return `turn:${testId}`;
+    return "";
+  }
+
   function findMessages(doc, location_) {
     if (!doc || typeof doc.querySelectorAll !== "function") return [];
     const hostname = (location_ && location_.hostname) || (doc.location && doc.location.hostname) || "";
@@ -744,14 +798,24 @@
       }
     }
 
-    /* Prefer candidates that can state their own role. In the new layout the
-       role lives on the message unit, and a turn wrapper around it does not
-       carry one: without this rule the wrapper would win the outermost-only
-       filter below and merge a prompt and its answer into a single message.
-       The old layout is unaffected - its turn sections already resolve a role
-       from a descendant, so they are in this pool too. */
-    const withRole = candidates.filter((entry) => entry.role !== "unknown");
-    const pool = withRole.length ? withRole : candidates;
+    /* A candidate that holds candidates of another role is a wrapper around
+       several turns, not a message: the newer layouts put a key on the thread
+       as well as on each message. Reading such a wrapper as one message merged
+       a whole stretch of the conversation into a single turn.
+
+       This replaces an earlier rule that kept only candidates able to state
+       their own role. On a page where the older turns carry no role marker and
+       the newest units do, that rule discarded every older turn: a six-message
+       conversation arrived as the two messages that happened to be marked. */
+    const roleOf = new Map(candidates.map((entry) => [entry.element, entry.role]));
+    const containers = new Set();
+    for (const entry of candidates) {
+      for (let node = entry.element.parentElement; node; node = node.parentElement) {
+        const role = roleOf.get(node);
+        if (role !== undefined && role !== entry.role) containers.add(node);
+      }
+    }
+    const pool = candidates.filter((entry) => !containers.has(entry.element));
 
     // Keep the outermost candidate when one message container nests another.
     const outer = pool.filter(
@@ -799,21 +863,24 @@
     // Assign stable ids and infer roles that the DOM did not expose.
     let previousRole = "assistant";
     const usedIds = new Set();
-    entries.forEach((entry, index) => {
-      if (entry.role === "unknown") entry.role = previousRole === "user" ? "assistant" : "user";
+    const kept = [];
+    for (const entry of entries) {
+      // A role read off the page stays; one that had to be inferred is marked,
+      // so a later pass over the whole thread can re-infer it in context
+      // instead of keeping a guess made from one batch of turns.
+      entry.inferred = entry.role === "unknown";
+      if (entry.inferred) entry.role = previousRole === "user" ? "assistant" : "user";
       previousRole = entry.role;
       const element = entry.element;
-      if (!messageIds.has(element)) {
-        const inner = element.querySelector("[data-message-id]");
-        const native = element.getAttribute("data-message-id") || (inner ? inner.getAttribute("data-message-id") : "");
-        messageIds.set(element, native ? `native:${native.slice(0, 80)}` : `aix:${++nextMessageId}`);
+      let id = identityOf(element);
+      if (!id) {
+        if (!messageIds.has(element)) messageIds.set(element, `aix:${++nextMessageId}`);
+        id = messageIds.get(element);
       }
-      let id = messageIds.get(element);
-      if (usedIds.has(id)) {
-        id = `aix:${++nextMessageId}`;
-        messageIds.set(element, id);
-      }
+      // A re-render can leave the same turn mounted twice; it is one message.
+      if (usedIds.has(id)) continue;
       usedIds.add(id);
+      const index = kept.length;
       entry.id = id;
       entry.index = index;
       entry.message = {
@@ -830,7 +897,10 @@
           .map((block) => ({ tex: block.tex, display: true })),
         timestamp: entry.timestamp
       };
-    });
+      kept.push(entry);
+    }
+    entries.length = 0;
+    entries.push(...kept);
 
     return entries;
   }
@@ -886,15 +956,49 @@
   }
 
   /**
-   * Build the export-ready chat object.
+   * Merge a batch read from the page into a thread that is being collected.
+   *
+   * Long conversations are virtualised: the site keeps only the turns near the
+   * viewport in the document and mounts the older ones as they are scrolled
+   * past. A collector therefore reads the thread in batches and needs one
+   * ordered list at the end. Walking upwards means a batch that has not been
+   * seen yet is older than everything collected so far, so it goes in front;
+   * walking downwards appends. Duplicates are dropped by the element id, which
+   * is stable per element for the life of the page.
+   */
+  function mergeEntries(collected, batch, at = "start") {
+    const seen = new Set(collected.map((entry) => entry.id));
+    const fresh = (batch || []).filter((entry) => entry.id && !seen.has(entry.id));
+    if (!fresh.length) return collected;
+    if (at === "end") collected.push(...fresh);
+    else collected.unshift(...fresh);
+    return collected;
+  }
+
+  /**
+   * Build the export-ready chat object from turns that have already been read.
+   * `found` is the array from findMessages - or from a collection of batches.
    * options.only: iterable of message ids to keep (custom selection).
    */
-  function parsePage(doc, location_, options) {
+  function chatFrom(found, doc, location_, options) {
     const only = options && options.only ? new Set(Array.from(options.only)) : null;
-    const found = findMessages(doc, location_);
+    /* Roles that had to be guessed were guessed inside one batch. Now that the
+       whole thread is in order, alternate them again from the top: a batch that
+       happened to hold only answers used to label them all the same way. */
+    let previousRole = "assistant";
+    for (const entry of found) {
+      if (entry.inferred) entry.role = previousRole === "user" ? "assistant" : "user";
+      previousRole = entry.role;
+      if (entry.message) entry.message.role = entry.role;
+    }
     // Read coverage before the selection filter: it describes the page, not
     // the subset the reader picked.
-    const coverage = found.coverage || { platform: "unknown", total: found.length, detected: found.length, unreadable: 0 };
+    const coverage = found.coverage || {
+      platform: (platformFor((location_ && location_.hostname) || "") || {}).id || "unknown",
+      total: found.length,
+      detected: found.length,
+      unreadable: 0
+    };
     const entries = only ? found.filter((entry) => only.has(entry.id)) : found;
     const hostname = (location_ && location_.hostname) || (doc.location && doc.location.hostname) || "";
     const platform = platformFor(hostname);
@@ -912,9 +1016,15 @@
     };
   }
 
+  function parsePage(doc, location_, options) {
+    return chatFrom(findMessages(doc, location_), doc, location_, options);
+  }
+
   globalThis.AIExporterParser = {
     parse,
     parsePage,
+    chatFrom,
+    mergeEntries,
     findMessages,
     diagnose,
     platformFor,

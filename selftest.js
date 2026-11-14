@@ -56,6 +56,7 @@
       downloads: {
         download(options, callback) {
           globalThis.__lastDownload = options.filename;
+          const id = 1;
           setTimeout(() => {
             if (globalThis.__failNextDownload) {
               globalThis.__failNextDownload = false;
@@ -68,15 +69,39 @@
             link.href = options.url;
             link.download = options.filename;
             link.click();
-            callback(1);
+            (globalThis.__downloadNames ||= new Map()).set(id, options.filename);
+            callback(id);
+            // The controller reports success only from this event, so the stub
+            // finishes a real download the way Chrome does.
+            setTimeout(
+              () => globalThis.__emitDownload({ id, state: { current: "complete" } }),
+              globalThis.__completeDelay == null ? 60 : globalThis.__completeDelay
+            );
           }, globalThis.__downloadDelay || 0);
+        },
+        cancel(id, callback) {
+          globalThis.__cancelledDownload = id;
+          setTimeout(() => globalThis.__emitDownload({ id, state: { current: "interrupted" } }), 10);
+          if (callback) callback();
+        },
+        search(query, callback) {
+          const name = (globalThis.__downloadNames || new Map()).get(query && query.id);
+          callback(name ? [{ id: query.id, filename: `C:\\Users\\Sample\\Downloads\\${name}`, state: "complete" }] : []);
         },
         showDefaultFolder() { globalThis.__folderShown = true; },
         onChanged: { addListener(listener) { (globalThis.__downloadListeners ||= []).push(listener); } }
       },
       tabs: { async create(options) { window.open(options.url, "_blank", "noopener"); return { id: 1 }; } }, runtime: {}
     };
-    globalThis.__emitDownload = (delta) => (globalThis.__downloadListeners || []).forEach((listener) => listener(delta));
+    globalThis.__emitDownload = (delta) => {
+      // Terminal states are final; replaying one must not resurrect an export.
+      const terminal = (globalThis.__terminalDownloads ||= new Set());
+      if (delta && delta.state && (delta.state.current === "complete" || delta.state.current === "interrupted")) {
+        if (terminal.has(delta.id)) return;
+        terminal.add(delta.id);
+      }
+      (globalThis.__downloadListeners || []).forEach((listener) => listener(delta));
+    };
     const script = document.createElement("script");
     script.src = "export/export.js";
     document.body.append(script);
@@ -322,8 +347,16 @@
     ] }] }), "text/html");
     const modMath = modDoc.querySelector(".math math");
     ensure(modMath && !/pmod/i.test(modMath.textContent), "\\pmod must compile to (mod m), not italic letters.");
-    const modWord = [...modMath.querySelectorAll("mi")].find((node) => node.textContent === "mod");
-    ensure(modWord && modWord.getAttribute("mathvariant") === "normal", "mod must be upright inside \\pmod.");
+    const modWord = [...modMath.querySelectorAll("mtext")].find((node) => node.textContent === "mod");
+    ensure(modWord, "mod must be upright inside \\pmod.");
+    const styledDoc = new DOMParser().parseFromString(exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "\\mathbb{R}^{+} \\subset \\mathbb{Z} \\to \\mathcal{F} \\mathbf{v} \\mathrm{d}x" }
+    ] }] }), "text/html");
+    const styledText = styledDoc.body.textContent;
+    ensure(styledText.includes("\u211d") && styledText.includes("\u2124"), "\\mathbb must print as the double-struck letter, not an italic R.");
+    ensure(styledText.includes("\u2131"), "\\mathcal must print as a script letter.");
+    ensure(styledText.includes(String.fromCodePoint(0x1d42f)), "\\mathbf must print as a bold letter.");
+    ensure(!/mathvariant="double-struck"/.test(html), "A style Chromium ignores must not be the only thing carrying it.");
     const matrixDoc = new DOMParser().parseFromString(exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
       { type: "formula", tex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}" }
     ] }] }), "text/html");
@@ -331,6 +364,19 @@
     ensure(matrix, "A matrix environment must compile to an mtable.");
     ensure(matrix.querySelectorAll("mtr").length === 2 && matrix.querySelectorAll("mtd").length === 4, "Matrix rows and cells must survive.");
     ensure(!/begin\{pmatrix\}|end\{pmatrix\}/.test(matrixDoc.querySelector(".math").textContent), "Environment markers must not leak into the page.");
+  });
+  await check("Fences, escaped LaTeX and wrapped maths render instead of printing their commands", () => {
+    const html = exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "\\left| A \\right| = \\left\\lfloor \\frac{100}{5} \\right\\rfloor + \\left\\lceil \\frac{100}{9} \\right\\rceil" },
+      { type: "paragraph", text: "For three sets:\n$\\begin{aligned} |A\\cup B| &= |A| + |B| \\end{aligned}$\nholds." },
+      { type: "paragraph", text: "Escaped source: $\\\\frac{1}{2}$ stays a fraction." }
+    ] }] });
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const text = doc.body.textContent;
+    ensure(!/lfloor|rfloor|lceil|rceil/.test(text), "Floor and ceiling must not print as words.");
+    ensure(doc.querySelectorAll(".math-inline math").length >= 2, "A $...$ span that wraps onto the next line must still compile.");
+    ensure(!text.includes("$") && !/begin\{|end\{/.test(text), "Delimiters and environment names must not reach the page.");
+    ensure(doc.querySelectorAll("math mfrac").length >= 3, "Every fraction must be typeset, including the escaped \\\\frac.");
   });
   await check("Pasted \\( \\) and \\[ \\] mathematics is normalised at the source", () => {
     const doc = new DOMParser().parseFromString(
@@ -368,6 +414,96 @@
     ] }] });
     ensure(!xml.includes("\\boxed") && !xml.includes("\\times"), "DOCX must not carry raw LaTeX.");
     ensure(xml.includes("Cambria Math"), "Math runs must use the math font.");
+    const styled = docxText({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "formula", tex: "\\mathbb{R}^{3} \\cup \\mathbf{v} \\cup \\mathrm{d}x" },
+      { type: "formula", tex: "\\lfloor 100/5 \\rfloor = \\left\\lceil \\frac{100}{7} \\right\\rceil" }
+    ] }] });
+    ensure(/<m:scr m:val="double-struck"\/>/.test(styled), "\\mathbb must keep its double-struck style in Word, not fall back to italic.");
+    ensure(/<m:sty m:val="b"\/>/.test(styled), "\\mathbf must stay bold in Word.");
+    ensure(/<m:nor\/>/.test(styled), "\\mathrm must stay upright in Word.");
+    ensure(styled.includes("\u230a") && styled.includes("\u2308"), "Floor and ceiling must reach Word as glyphs.");
+    ensure(!/lfloor|rfloor|lceil|rceil/.test(styled), "Word must not print floor or ceiling command names.");
+  });
+  /* Regression: the inline-maths pattern used to accept a closing `$` that
+     followed a space, so "costs $5 for $x$ units" typeset "5for" as a formula,
+     swallowed the price and left a dangling "x$" in HTML, Word, Markdown and
+     TXT. */
+  await check("A price beside inline maths keeps both", () => {
+    const prose = "It costs $5 for $x^2$ units, and $10 for the rest.";
+    const one = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "paragraph", text: prose }] }] };
+    const html = exporter.documentHtml(one);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const maths = doc.querySelectorAll("math");
+    ensure(maths.length === 1, `Only $x^2$ is mathematics, but ${maths.length} expressions were typeset.`);
+    ensure(maths[0].querySelector("msup"), "The expression beside a price must still compile.");
+    const shown = doc.body.textContent.replace(/\s+/g, " ");
+    ensure(shown.includes("$5 for") && shown.includes("$10 for the rest"), "Prices must stay prose in the document.");
+    ensure(!shown.includes("5for"), "The price must not be pulled into the formula.");
+    const plain = exporter.textFor(one).replace(/\s+/g, " ");
+    ensure(plain.includes("$5 for") && plain.includes("x^2"), `Plain text lost the sentence: ${plain}`);
+    ensure(exporter.markdownFor(one).includes("$x^2$"), "Markdown must keep the expression delimited.");
+    ensure(exporter.markdownFor(one).includes("$5 for"), "Markdown must keep the price as prose.");
+    // The prose-only case must still stay prose.
+    const currency = exporter.documentHtml({ ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "paragraph", text: "From $5 to $10 per seat." }
+    ] }] });
+    ensure(!currency.includes("<math"), "Two prices are not a formula.");
+  });
+  /* Regression: an escaped dollar printed its backslash in HTML, TXT and PNG. */
+  await check("An escaped price prints as a price", () => {
+    const prose = String.raw`Price \$5 and \$10, plus \$x.`;
+    const one = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "paragraph", text: prose }] }] };
+    const html = exporter.documentHtml(one);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const shown = doc.body.textContent.replace(/\s+/g, " ");
+    ensure(!shown.includes("\\$"), `The escape leaked into the document: ${shown}`);
+    ensure(shown.includes("$5 and $10"), "Both prices must survive the escape.");
+    const plain = exporter.textFor(one);
+    ensure(!plain.includes("\\$"), "Plain text must not show the escape.");
+    ensure(exporter.markdownFor(one).includes("$5") && !exporter.markdownFor(one).includes("\\$"), "Markdown must drop the escape.");
+  });
+  /* Regression: "$$ $$" carries no expression; marking it as a maths failure
+     put a visible error badge into the page for nothing. */
+  await check("An empty formula is dropped instead of reported as a failure", () => {
+    const one = { ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "paragraph", text: "Before $$ $$ after." }
+    ] }] };
+    const html = exporter.documentHtml(one);
+    ensure(!html.includes("data-tex-error"), "An empty formula is not a rendering failure.");
+    ensure(!html.includes("<math"), "An empty formula must not become an empty equation.");
+    const shown = new DOMParser().parseFromString(html, "text/html").body.textContent.replace(/\s+/g, " ");
+    ensure(shown.includes("Before") && shown.includes("after"), "The surrounding prose must stay whole.");
+  });
+  /* The twelve expressions the release brief names, across every engine: one
+     MathML structure each, one OMML structure each in Word, TeX intact in
+     Markdown, and no command names in the plain-text fallback. */
+  await check("The twelve required expressions compile in every engine", () => {
+    const cases = [
+      [String.raw`\frac{a}{b}`, "mfrac", "m:f"],
+      [String.raw`\frac{1}{\frac{a}{b}}`, "mfrac", "m:f"],
+      [String.raw`\sqrt{x+1}`, "msqrt", "m:rad"],
+      [String.raw`\sqrt[3]{x}`, "mroot", "m:deg"],
+      [String.raw`x^{n+1}`, "msup", "m:sSup"],
+      [String.raw`a_{ij}`, "msub", "m:sSub"],
+      [String.raw`\frac{x^2+1}{x-1}`, "mfrac", "m:f"],
+      [String.raw`\sum_{i=1}^{n} i`, "munderover", "m:nary"],
+      [String.raw`\int_0^1 x^2\,dx`, "msubsup", "m:nary"],
+      [String.raw`\begin{bmatrix}a&b\\c&d\end{bmatrix}`, "mtable", "m:m"],
+      [String.raw`a+H=\{a+h:h\in H\}`, "mo", "m:oMath"],
+      [String.raw`\lim_{x\to 0}\frac{\sin x}{x}`, "munder", "m:limLow"]
+    ];
+    for (const [tex, mathmlTag, ommlTag] of cases) {
+      const mathml = exporter.texToMathML(tex, true);
+      ensure(mathml.includes(`<${mathmlTag}`), `${tex} must compile to ${mathmlTag}.`);
+      ensure(!mathml.includes("\\"), `${tex} leaked TeX into MathML.`);
+      const parsed = new DOMParser().parseFromString(mathml, "application/xml");
+      ensure(!parsed.querySelector("parsererror"), `${tex} produced malformed MathML.`);
+      const xml = docxText({ ...chat, messages: [{ role: "assistant", blocks: [{ type: "formula", tex }] }] });
+      ensure(xml.includes(`<${ommlTag}`), `${tex} must reach Word as ${ommlTag}.`);
+      const plain = exporter.texToPlain(tex);
+      ensure(plain && !plain.includes("\\"), `${tex} must have a readable plain-text fallback, not TeX.`);
+      ensure(exporter.markdownFor({ ...chat, messages: [{ role: "assistant", blocks: [{ type: "formula", tex }] }] }).includes(tex), `${tex} must survive Markdown unchanged.`);
+    }
   });
   await check("Format metadata drives every advertised download", () => {
     ensure(Object.keys(exporter.FORMATS).join() === "pdf,docx,markdown,txt,json,html,image");
@@ -401,9 +537,12 @@
   });
   await check("DOCX keeps code indentation, blank lines and real table rows", () => {
     const document = docxText();
-    ensure(document.includes('<w:t xml:space="preserve">    int values[] = {10, 20, 30};</w:t>'), "Code indentation was lost.");
+    // Colour runs split a line into several <w:t> elements; indentation must
+    // still arrive as preserved spaces at the start of its own line.
+    ensure(/<w:t xml:space="preserve"> {4}<\/w:t>/.test(document), "Code indentation was lost.");
     const codeParagraphs = [...document.matchAll(/<w:p>(?:(?!<\/w:p>).)*?<w:pStyle w:val="Code"\/>(?:(?!<\/w:p>).)*<\/w:p>/g)].map((match) => match[0]);
     ensure(codeParagraphs.some((paragraph) => !paragraph.includes("<w:t")), "A blank source line was lost.");
+    ensure(codeParagraphs.length >= 9, "Every source line must keep its own code paragraph.");
     ensure((document.match(/<w:tr>/g) || []).length >= 4, "The table must keep one row per source row.");
     ensure(document.includes("Long reference"));
   });
@@ -484,6 +623,18 @@
     ensure(md.includes("Source: Embedded image"), "Attribution is opt-in but must appear when requested.");
     ensure(md.includes("[image not embedded: Remote image blocked"), "A blocked remote image must be labelled.");
     ensure(!exporter.markdownFor(chat, { includeImages: false }).includes("![Array traversal diagram]"));
+  });
+  await check("DOCX rejects data URIs whose bytes are not an image", () => {
+    const page = {
+      version: 1, title: "Broken image",
+      messages: [{ role: "assistant", blocks: [
+        { type: "image", src: "data:image/png;base64,AAAA", alt: "Broken bytes" }
+      ] }]
+    };
+    const built = docx.parts(page, {});
+    ensure(!built.files.some((file) => file.name.startsWith("word/media/")), "Corrupt bytes must not become a media part.");
+    const body = built.files.find((file) => file.name === "word/document.xml").text;
+    ensure(body.includes("Image not embedded") && body.includes("Broken bytes"), "The broken image must be reported, not hidden.");
   });
   await check("DOCX embeds inline images and can omit them", () => {
     const withImage = docx.parts(chat, {});
@@ -996,7 +1147,7 @@
     ensure(/inter/.test(token("--font-ui")) && /jetbrains mono/.test(token("--font-mono")), "UI and technical type must be Inter and JetBrains Mono.");
     ensure(/stix two math/.test(token("--font-math")), "Mathematical expressions must keep the STIX fallback.");
     const primaryStyle = win.getComputedStyle(doc.getElementById("primary"));
-    ensure(primaryStyle.backgroundColor === "rgb(255, 81, 0)" && primaryStyle.color === "rgb(0, 0, 0)", "The primary action must be an orange block with black text.");
+    ensure(primaryStyle.backgroundColor === "rgba(0, 0, 0, 0)" && primaryStyle.borderTopColor === "rgb(255, 81, 0)" && primaryStyle.color === "rgb(255, 81, 0)", "The primary action must be a flame outline on the black ground, not an orange block with black text.");
     frame.remove();
   });
 
@@ -1117,15 +1268,43 @@
     frame.remove();
   });
 
-  await check("Oversized PNG is rejected before a large drawing buffer is allocated", async () => {
-    const huge = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "code", language: "cpp", code: "    int value = 1;\n".repeat(1000) }] }] };
+  await check("Tall PNG falls back to a smaller scale and says so", async () => {
+    const tall = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "code", language: "cpp", code: "    int value = 1;\n".repeat(1000) }] }] };
+    const blob = await exporter.pngFor(tall);
+    ensure(blob.type === "image/png" && blob.size > 100, "A tall selection should still produce a real PNG.");
+    ensure(blob.exportScale < blob.requestedScale, "The reduced detail must be recorded on the blob.");
+    ensure(blob.pixelHeight <= 16384 && blob.pixelWidth * blob.pixelHeight <= 16 * 1024 * 1024, "The fallback must stay inside the canvas limit.");
+    const result = await exporter.build(tall, "image", {});
+    ensure((result.warnings || []).some((item) => /Rendered at .*x .* instead of/.test(item.reason)), "The reduced scale must be reported, never silent.");
+  });
+  await check("PNG beyond every safe scale is rejected before drawing", async () => {
+    const huge = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "code", language: "cpp", code: "    int value = 1;\n".repeat(6000) }] }] };
     let rejected = false;
     try { await exporter.pngFor(huge); } catch (error) { rejected = /too large for one PNG/.test(error.message); }
-    ensure(rejected);
+    ensure(rejected, "A selection that cannot fit at any safe scale must fail with a real reason.");
   });
-  await check("Small PNG exports a real PNG blob", async () => {
+  await check("Small PNG exports a real PNG blob with its real DPI", async () => {
     const blob = await exporter.pngFor({ ...chat, messages: [chat.messages[0]] });
     ensure(blob.type === "image/png" && blob.size > 100);
+    ensure(blob.exportScale === 1.5, "Standard detail must rasterise at 1.5x.");
+    // Walk the chunks to the pHYs record rather than trusting the encoder.
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const view = new DataView(bytes.buffer);
+    let at = 8;
+    let phys = null;
+    while (at + 12 <= bytes.length) {
+      const length = view.getUint32(at);
+      const type = String.fromCharCode(bytes[at + 4], bytes[at + 5], bytes[at + 6], bytes[at + 7]);
+      if (type === "pHYs") {
+        phys = { x: view.getUint32(at + 8), y: view.getUint32(at + 12), unit: bytes[at + 16] };
+        break;
+      }
+      at += 12 + length;
+    }
+    ensure(phys && phys.unit === 1, "A PNG must carry its physical resolution.");
+    const expected = Math.round(144 / 0.0254);
+    ensure(Math.abs(phys.x - expected) <= 2 && phys.x === phys.y, "1.5x detail must report 144 DPI.");
+    ensure(bytes[12] === 0x49 && bytes[13] === 0x48, "The IHDR must remain the first chunk.");
   });
   await check("PNG poster draws embedded images", async () => {
     const imageBlock = chat.messages[1].blocks.find((block) => block.type === "image" && block.kind === "diagram");
@@ -1276,6 +1455,68 @@
     ensure(!html.includes("$"), "Dollar delimiters must not survive into the document.");
   });
 
+  await check("A turn read twice while the thread loads is one message", () => {
+    /* A virtualised thread re-creates its elements as it scrolls, so the same
+       turn is parsed again in a later batch. Identity must come from the site's
+       turn key, not from the element, or the export repeats turns. */
+    const markup = (n) => `<section data-testid="conversation-turn-${n}"><div class="markdown" data-message-author-role="${n % 2 ? "user" : "assistant"}"><p>turn ${n}</p></div></section>`;
+    // The newest batch first: this is the thread read from the bottom upwards.
+    const newest = parser.findMessages(
+      new DOMParser().parseFromString(`<html><body>${markup(2)}${markup(3)}${markup(4)}</body></html>`, "text/html"),
+      { hostname: "chatgpt.com", href: "https://chatgpt.com/c/x" }
+    );
+    const older = parser.findMessages(
+      new DOMParser().parseFromString(`<html><body>${markup(1)}${markup(2)}${markup(3)}</body></html>`, "text/html"),
+      { hostname: "chatgpt.com", href: "https://chatgpt.com/c/x" }
+    );
+    ensure(newest.length === 3 && older.length === 3, "Each batch must be read on its own.");
+    const collected = parser.mergeEntries(newest.slice(), older, "start");
+    ensure(collected.length === 4, `Four distinct turns expected, got ${collected.length}.`);
+    const chat = parser.chatFrom(collected, new DOMParser().parseFromString("<html><body></body></html>", "text/html"), { hostname: "chatgpt.com", href: "https://chatgpt.com/c/x" });
+    ensure(chat.messages.map((message) => message.text).join("|") === "turn 1|turn 2|turn 3|turn 4", `Turns must keep their order, got ${chat.messages.map((message) => message.text).join("|")}.`);
+  });
+
+  await check("Turns without a role marker still count as messages", () => {
+    // Older turns on the same page carry no role attribute while the newest
+    // ones do: every turn must still be detected, not just the marked ones.
+    const legacy = [1, 2, 3, 4].map((n) =>
+      `<section data-testid="conversation-turn-${n}"><div class="markdown"><p>legacy ${n}</p></div></section>`
+    ).join("");
+    const marked = [5, 6].map((n) =>
+      `<div data-content-search-unit-key="thread:${n}:${n % 2 ? "user" : "assistant"}"><div class="markdown" data-message-author-role="${n % 2 ? "user" : "assistant"}"><p>new ${n}</p></div></div>`
+    ).join("");
+    const page = parse(`<html><body><main>${legacy}${marked}</main></body></html>`);
+    ensure(page.messages.length === 6, `All six turns must be detected, got ${page.messages.length}.`);
+    ensure(page.messages[0].text.includes("legacy 1"), "The oldest turn must be the first message.");
+  });
+
+  await check("A wrapper around several turns is not one message", () => {
+    const turns = [1, 2, 3, 4].map((n) =>
+      `<div><div class="markdown" data-message-author-role="${n % 2 ? "user" : "assistant"}"><p>wrapped ${n}</p></div></div>`
+    ).join("");
+    const page = parse(`<html><body><div data-turn-key="thread:1">${turns}</div></body></html>`);
+    ensure(page.messages.length === 4, `The wrapper must not merge its turns, got ${page.messages.length}.`);
+  });
+
+  await check("Steps written on separate lines stay separate lines", () => {
+    const steps = "2 \\times 1 = 2 \\\\ 2 + 2 = 4 \\\\ 4 + 2 = 6 \\\\ 6 + 2 = 8 \\equiv 0 \\pmod{8}";
+    const sample = mcqChat([
+      { type: "paragraph", text: "Step 1: Repeated addition" },
+      { type: "formula", tex: steps },
+      { type: "formula", tex: "2 \\times 1 = 2\n2 + 2 = 4" }
+    ]);
+    const html = exporter.documentHtml(sample);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const [first, second] = doc.querySelectorAll(".math");
+    // A row break must become a row: four steps, four rows, never one long line.
+    ensure(first && first.querySelectorAll("mtr").length === 4, "Each step must be its own row.");
+    ensure(!first.querySelector("mspace[width='0.3em']"), "A row break must not degrade into a space.");
+    ensure(second && second.querySelectorAll("mtr").length === 2, "A literal line break is a row break too.");
+    const xml = docx.parts(sample, {}).files.find((file) => file.name === "word/document.xml").text;
+    ensure(/<m:eqArr>/.test(xml), "Word must stack the steps as an equation array.");
+    ensure(!/<m:m>/.test(xml), "A single-column stack must not become a Word matrix, whose rows are padded apart.");
+  });
+
   await check("Inline options split only when the run is unambiguous", () => {
     const inline = mcqChat([{ type: "paragraph", text: "Q3. Which Greek letter comes third? A. alpha. B. beta. C. gamma. D. delta." }]);
     const doc = new DOMParser().parseFromString(exporter.documentHtml(inline), "text/html");
@@ -1327,6 +1568,213 @@
     ensure(/<w:ind[^>]*w:hanging="340"/.test(xml), "Word options need a hanging indent.");
     ensure((xml.match(/<w:p>/g) || []).length >= 5, "Word needs one paragraph per option.");
     for (const letter of ["A.", "B.", "C.", "D."]) ensure(xml.includes(letter), `Word lost option ${letter}.`);
+  });
+
+  /* ------------------------------------------------- math regression corpus */
+
+  const mathCorpus = [
+    "\\frac{a}{b}", "\\frac{1}{\\frac{a}{b}}", "\\sqrt{x+1}", "\\sqrt[3]{x}", "x^{n+1}", "a_{ij}",
+    "\\frac{x^2+1}{x-1}", "\\sum_{i=1}^{n} i", "\\int_0^1 x^2\\,dx",
+    "\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}", "a+H=\\{a+h:h\\in H\\}",
+    "\\lim_{x\\to 0}\\frac{\\sin x}{x}", "\\sin x", "x % this is a comment"
+  ];
+  const mathChat = (items) => ({
+    version: 1, title: "Math", messages: [{ role: "assistant", blocks: items.map((tex) => ({ type: "formula", tex })) }]
+  });
+  const mathSample = mathChat(mathCorpus);
+
+  await check("The full TeX regression corpus compiles to structured MathML", () => {
+    const html = exporter.documentHtml(mathSample);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    ensure(!/data-tex-error/.test(html), "No expression in the corpus may fall back to source.");
+    ensure(!/\\[a-zA-Z]/.test(doc.body.textContent), "No TeX command may leak into the page.");
+    ensure(!html.includes("this is a comment"), "A % comment must be stripped, not typeset.");
+    const maths = [...doc.querySelectorAll(".math math")];
+    ensure(maths.length === mathCorpus.length, `Every formula needs one <math> (found ${maths.length}).`);
+
+    ensure(maths[0].querySelector("mfrac"), "\\frac must be an mfrac.");
+    ensure(maths[1].querySelector("mfrac mfrac"), "A nested \\frac must stay nested.");
+    ensure(maths[2].querySelector("msqrt"), "\\sqrt must be an msqrt.");
+    const indexedRoot = maths[3].querySelector("mroot");
+    ensure(indexedRoot && indexedRoot.children[1].textContent.trim() === "3", "\\sqrt[3] must keep its index.");
+    ensure(maths[4].querySelector("msup mo") && maths[4].querySelector("msup").textContent.includes("+"), "x^{n+1} must keep the whole exponent.");
+    ensure(maths[5].querySelector("msub") && maths[5].querySelector("msub").textContent.includes("ij"), "a_{ij} must keep both subscript letters.");
+    ensure(maths[6].querySelectorAll("mfrac msup").length >= 1, "A fraction over a difference must keep the superscript.");
+    ensure(maths[7].querySelector("munderover"), "A sum with both limits must be an munderover.");
+    ensure(maths[8].querySelector("msubsup"), "An integral with both limits must be an msubsup.");
+    const matrix = maths[9].querySelector("mtable");
+    ensure(matrix && matrix.querySelectorAll("mtr").length === 2 && matrix.querySelectorAll("mtd").length === 4, "A bmatrix must keep 2x2 cells.");
+    const fences = [...maths[9].querySelectorAll("mo")].filter((node) => node.hasAttribute("fence"));
+    ensure(fences.length === 2 && fences[0].textContent === "[" && fences[1].textContent === "]", "A bmatrix must carry real bracket fences.");
+    ensure(maths[10].textContent.includes("{") && maths[10].textContent.includes("}"), "Literal \\{ \\} must render as braces.");
+    const limit = maths[11].querySelector("munder");
+    ensure(limit && limit.querySelector("mtext").textContent === "lim", "\\lim must keep its under-script, not lose it.");
+    ensure(limit.querySelector("mo").textContent.includes("\u2192"), "\\to must become an arrow.");
+    const sinus = maths[12].querySelector("mtext");
+    ensure(sinus && sinus.textContent === "sin", "\\sin must be upright text, not italic letters.");
+    ensure(sinus.nextElementSibling && sinus.nextElementSibling.tagName.toLowerCase() === "mspace", "\\sin x needs a space before its argument.");
+    ensure(maths[13].textContent.trim() === "x", "A comment must not become formula content.");
+  });
+
+  await check("TXT renders the same corpus as readable mathematics", () => {
+    const txt = exporter.textFor(mathSample);
+    for (const command of ["\\frac", "\\sqrt", "\\sum", "\\int", "\\begin", "\\end", "\\lim", "\\sin", "\\in", "\\to", "\\{"]) {
+      ensure(!txt.includes(command), `Text export must not contain the command ${command}.`);
+    }
+    ensure(txt.includes("a/b"), "A simple fraction must read a/b.");
+    ensure(txt.includes("1/(a/b)"), "A nested fraction must keep its grouping.");
+    ensure(txt.includes("\u221a(x+1)") && txt.includes("\u221a[3](x)"), "Roots must read as roots.");
+    ensure(txt.includes("x^(n+1)") && txt.includes("a_(ij)"), "Scripts must stay readable.");
+    ensure(txt.includes("(x^2+1)/(x-1)"), "A compound fraction must keep its brackets.");
+    ensure(txt.includes("\u2211_(i = 1)^(n) i"), "A sum must keep its limits.");
+    ensure(txt.includes("\u222b_0^1 x^2 dx"), "An integral must keep its limits.");
+    ensure(txt.includes("[a, b; c, d]"), "A matrix must read row by row.");
+    ensure(txt.includes("a+H = {a+h:h \u2208 H}"), "Escaped set braces must survive as braces.");
+    ensure(txt.includes("lim_(x \u2192 0)(sin x)/x"), "A limit must keep its subscript and the function spacing.");
+    ensure(txt.includes("sin x"), "A function must not run into its argument.");
+    ensure(!txt.includes("comment"), "A comment must not reach the text export.");
+  });
+
+  await check("TXT reduces inline TeX in prose, lists and tables too", () => {
+    const page = {
+      version: 1, title: "Inline mathematics",
+      messages: [{ role: "assistant", blocks: [
+        { type: "paragraph", text: "Starting from $\\frac{a}{b}$, $\\sqrt{x+1}$ and $a+H=\\{a+h:h\\in H\\}$." },
+        { type: "list", ordered: false, items: ["First $\\frac{1}{\\frac{a}{b}}$", "Then $x^{n+1}$"] },
+        { type: "table", head: ["Term"], rows: [["$a_{ij}$"]] }
+      ] }]
+    };
+    const txt = exporter.textFor(page);
+    for (const command of ["\\frac", "\\sqrt", "\\in", "\\{"]) {
+      ensure(!txt.includes(command), `Inline prose must not leak ${command}.`);
+    }
+    ensure(txt.includes("Starting from a/b, \u221a(x+1) and a+H = {a+h:h \u2208 H}."), "Math inside a sentence must read as words.");
+    ensure(txt.includes("First 1/(a/b)") && txt.includes("Then x^(n+1)"), "List items must reduce math too.");
+    ensure(txt.includes("a_(ij)"), "Table cells must reduce math too.");
+  });
+
+  /* --------------------------------------------------- structure regressions */
+
+  const nestedListPage = parse(`<html><body><main><section data-testid="conversation-turn-1"><div data-message-author-role="assistant"><div class="markdown">
+    <ul><li>Outer one<ul><li>Inner one</li><li>Inner two<ol><li>Deep</li></ol></li></ul></li><li>Outer two</li></ul>
+    <table><tr><td>A1</td><td>B1</td></tr><tr><td>A2</td><td>B2</td></tr></table>
+  </div></div></section></main></body></html>`);
+
+  await check("Nested lists keep their depth and kind in every format", () => {
+    const block = nestedListPage.messages[0].blocks.find((item) => item.type === "list");
+    ensure(block && block.items.join("|") === "Outer one|Inner one|Inner two|Deep|Outer two", "Nested items must stay in reading order.");
+    ensure(block.depths.join() === "0,1,1,2,0", "The parser must record each item's depth.");
+    ensure(block.orders.join() === "false,false,false,true,false", "A nested <ol> must be recorded as ordered.");
+
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(nestedListPage), "text/html");
+    ensure(doc.querySelectorAll("ul.list ul.list").length === 1, "The nested <ul> must be real markup.");
+    ensure(doc.querySelectorAll("ul.list ol.list").length === 1, "The numbered sub-list must stay an <ol>.");
+    ensure(doc.querySelectorAll(".list li").length === 5, "Every item must render exactly once.");
+
+    const md = exporter.markdownFor(nestedListPage);
+    ensure(md.includes("- Outer one\n  - Inner one\n  - Inner two\n    1. Deep\n- Outer two"), "Markdown must indent each level.");
+
+    const txt = exporter.textFor(nestedListPage);
+    ensure(txt.includes("  - Outer one") && txt.includes("    - Inner one") && txt.includes("      1. Deep"), "Text must indent each level.");
+
+    const xml = docxText(nestedListPage);
+    ensure(/<w:ilvl w:val="0"\/>/.test(xml) && /<w:ilvl w:val="1"\/>/.test(xml) && /<w:ilvl w:val="2"\/>/.test(xml), "Word must give each level its own ilvl.");
+    ensure(/<w:numId w:val="2"\/>/.test(xml), "The nested ordered list needs its own numbering instance.");
+  });
+
+  await check("A table without header cells keeps every row as data", () => {
+    const block = nestedListPage.messages[0].blocks.find((item) => item.type === "table");
+    ensure(block && block.head.length === 0, "A <td>-only table must not invent a header.");
+    ensure(block.rows.length === 2 && block.rows[0].join() === "A1,B1", "Both data rows must survive parsing.");
+    const doc = new DOMParser().parseFromString(exporter.documentHtml(nestedListPage), "text/html");
+    ensure(!doc.querySelector(".grid thead"), "HTML must not promote the first row to a header.");
+    ensure(doc.querySelectorAll(".grid tbody tr").length === 2, "HTML must keep two body rows.");
+    ensure(!/<w:tr>[\s\S]*?<w:tblHeader\/>/.test(docxText(nestedListPage)), "Word must not mark a data row as a repeating header.");
+  });
+
+  await check("Unknown block types keep their text instead of being dropped", () => {
+    const unknown = { version: 1, title: "Unknown", messages: [{ role: "assistant", blocks: [
+      { type: "footnote", text: "Keep this footnote text." },
+      { type: "paragraph", text: "And this paragraph." }
+    ] }] };
+    ensure(exporter.documentHtml(unknown).includes("Keep this footnote text."), "HTML must keep an unknown block's text.");
+    ensure(exporter.markdownFor(unknown).includes("Keep this footnote text."), "Markdown must keep an unknown block's text.");
+    ensure(exporter.textFor(unknown).includes("Keep this footnote text."), "TXT must keep an unknown block's text.");
+  });
+
+  await check("DOCX converts inline $$ maths, colours tokens and strips invalid XML", () => {
+    const sample = { version: 1, title: "Word details", messages: [{ role: "assistant", blocks: [
+      { type: "paragraph", text: "Inline $$a^2+b^2=c^2$$ stays an equation." },
+      { type: "code", language: "cpp", code: "int count = 42; // tally" },
+      { type: "paragraph", text: "Invalid \uD800 and \uFFFF characters must not reach the package." }
+    ] }] };
+    const xml = docxText(sample);
+    ensure(!xml.includes("$$"), "Inline dollar delimiters must not survive into Word.");
+    ensure(/<m:oMath>/.test(xml) && xml.includes("Cambria Math"), "Inline $$ maths must arrive as OMML.");
+    ensure(/<w:color w:val="8250DF"\/>/.test(xml), "A keyword run must carry the Word keyword colour.");
+    ensure(/<w:color w:val="953800"\/>/.test(xml), "A number run must carry the Word number colour.");
+    ensure(!/[\uD800\uFFFF]/.test(xml), "Lone surrogates and noncharacters must be stripped.");
+    const parsed = new DOMParser().parseFromString(xml, "application/xml");
+    ensure(!parsed.querySelector("parsererror"), "document.xml must remain well-formed XML.");
+  });
+
+  /* --------------------------------------------------------- controller UX */
+
+  await check("Cancelling stops the build, cleans up and never downloads", async () => {
+    const frame = await controllerFrame();
+    const win = frame.contentWindow;
+    const controller = frame.contentDocument;
+    const pick = (format) => controller.querySelector(`input[name="format"][value="${format}"]`);
+    pick("markdown").checked = true;
+    pick("markdown").dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Make the build long enough to cancel deterministically.
+    const original = win.AIExporter.build;
+    win.AIExporter.build = async (...args) => {
+      await new Promise((resolve) => win.setTimeout(resolve, 800));
+      return original(...args);
+    };
+    const primary = controller.getElementById("primary");
+    primary.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const cancel = controller.getElementById("modal-cancel");
+    ensure(!controller.getElementById("modal-progress").hidden, "A build must show its progress card.");
+    ensure(cancel && cancel.textContent === "Cancel export", "The progress card must offer a real cancel action.");
+    cancel.click();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    ensure(controller.getElementById("status").textContent.includes("Export cancelled"), "Cancellation must be reported as such.");
+    ensure(controller.getElementById("modal-error").hidden, "Cancelling is not an export failure.");
+    ensure(!controller.getElementById("modal-progress").hidden, "The progress card must show where the work stopped.");
+    ensure(controller.querySelectorAll("#progress-stages li.is-cancelled").length === 1, "The stopped stage must be marked.");
+    ensure(win.__lastDownload === undefined, "A cancelled export must never reach the download API.");
+    ensure(!primary.disabled, "Controls must be restored after cancellation.");
+    ensure(cancel.textContent === "Close", "The cancelled card must offer Close.");
+    cancel.click();
+    ensure(controller.getElementById("modal-scrim").hidden, "Close must dismiss the cancelled card.");
+    frame.remove();
+  });
+
+  await check("Success appears only when Chrome confirms the download", async () => {
+    const frame = await controllerFrame();
+    const controller = frame.contentDocument;
+    const pick = (format) => controller.querySelector(`input[name="format"][value="${format}"]`);
+    pick("markdown").checked = true;
+    pick("markdown").dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    frame.contentWindow.__completeDelay = 600;
+    controller.getElementById("filename").value = "Confirmed notes";
+    controller.getElementById("filename").dispatchEvent(new Event("input"));
+    controller.getElementById("primary").click();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    ensure(controller.getElementById("modal-success").hidden, "Success must not be claimed before the download completes.");
+    ensure(controller.getElementById("status").textContent.includes("Download started"), "Acceptance must be reported as started, not complete.");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    ensure(!controller.getElementById("modal-success").hidden, "Chrome's completion event must produce the success card.");
+    ensure(controller.getElementById("modal-file").textContent === "Confirmed notes.md", "Success must name the file Chrome saved.");
+    ensure(controller.getElementById("status").textContent.includes("Export complete: Confirmed notes.md"), "Completion must replace the started status.");
+    frame.remove();
   });
 
   const list = document.getElementById("results");

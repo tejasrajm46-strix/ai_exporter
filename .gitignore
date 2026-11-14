@@ -15,6 +15,13 @@ node_modules/
 # Tool metadata
 .freebuff/
 
+# Generated verification artifacts: rebuild with `npm run artifacts`.
+# The machine-readable result table is kept; the binaries are not committed.
+tests/output/*
+!tests/output/verification.json
+!tests/output/verification.md
+tests/visual/
+
 # OS and editor noise
 .DS_Store
 Thumbs.db

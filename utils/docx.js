@@ -15,8 +15,9 @@
  *  - a black-and-white mode that drops every colour
  *
  * What it deliberately does not do: download remote images (the export runs
- * offline), or convert TeX to editable Word equations - the formula source is
- * kept in a math font instead of being dropped.
+ * offline). Mathematics is converted into Word's own equation markup (OMML), so
+ * a .docx holds editable fractions, scripts, limits and matrices rather than
+ * TeX flattened into text.
  */
 (() => {
   "use strict";
@@ -58,8 +59,12 @@
 
   function xml(value) {
     return String(value == null ? "" : value)
-      // Characters Word cannot store in XML: drop them rather than fail the export.
+      // Characters Word cannot store in XML: drop them rather than fail the
+      // export. Lone surrogates and the Unicode noncharacters are equally
+      // invalid in an XML document, and a page can contain them.
       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+      .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1")
+      .replace(/[\uFDD0-\uFDEF\uFFFE\uFFFF]/g, "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -214,11 +219,215 @@
     return exporter && typeof exporter.texToPlain === "function" ? exporter.texToPlain(source) : source;
   }
 
+  /* --------------------------------------------------------------- equations */
+
+  /* Word cannot import MathML, but it has its own equation model (OMML). The TeX
+     token tree comes from exporter.js, which already owns TeX parsing; this file
+     only serialises that tree into Word markup. Source text that cannot be
+     parsed still falls back to readable Cambria Math text, never to backslashes. */
+  const MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
+  const NARY = new Set(["\u2211", "\u220f", "\u2210", "\u22c3", "\u22c2", "\u22c1", "\u22c0"]);
+  const INTEGRALS = new Set(["\u222b", "\u222c", "\u222e"]);
+  const MATH_FONT = '<w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr>';
+
+  function textOf(node) {
+    if (!node) return "";
+    if (node.tag === "#text") return String(node.text);
+    return (node.children || []).map(textOf).join("");
+  }
+
+  /* CT_RPR holds either <m:nor/> (upright text) or a script/style pair, never
+     both. Word maps the pair onto the matching Unicode maths range, which is
+     what keeps \mathbb{R}, \mathcal{F} and \mathbf{v} meaning what they meant:
+     without it every letter reached Word as plain math italic. */
+  const OMML_SCRIPTS = {
+    "double-struck": "double-struck", script: "script", fraktur: "fraktur",
+    "sans-serif": "sans-serif", monospace: "monospace"
+  };
+  const OMML_STYLES = {
+    bold: "b", "bold-italic": "bi", italic: "i", "sans-serif-italic": "i",
+    "bold-sans-serif": "b", "bold-script": "b", "bold-fraktur": "b"
+  };
+
+  function mathRunProps(variant) {
+    if (!variant) return "";
+    if (variant === true || variant === "normal") return "<m:rPr><m:nor/></m:rPr>";
+    const script = OMML_SCRIPTS[variant];
+    const style = OMML_STYLES[variant];
+    if (script) return `<m:rPr><m:scr m:val="${script}"/><m:sty m:val="${style || "p"}"/></m:rPr>`;
+    if (style) return `<m:rPr><m:sty m:val="${style}"/></m:rPr>`;
+    return "";
+  }
+
+  function mathRun(value, variant) {
+    if (!value) return "";
+    return `<m:r>${mathRunProps(variant)}${MATH_FONT}<m:t xml:space="preserve">${xml(value)}</m:t></m:r>`;
+  }
+
+  /* Accepts one node or a list of them: the parser hands over both shapes. */
+  function mathBody(nodes) {
+    if (!nodes) return "";
+    return Array.isArray(nodes) ? ommlRow(nodes) : ommlNode(nodes);
+  }
+
+  /* A big operator owns the rest of its row as its operand, which is what TeX
+     means by \sum_{a}^{b} f: the sum is applied to everything that follows. */
+  /* An n-ary operator is a Word equation object, not a character with scripts
+     attached: only the object stretches to the height of its operand and keeps
+     its limits in the right place. A sum carries \\limits, but an integral
+     carries plain sub/sup, so both spellings have to count - otherwise
+     "\\int_0^1" reached Word as a run of text that never grew with x^2. */
+  function bigOperator(node) {
+    if (!node || node.tag !== "mo") return "";
+    const chr = textOf(node).trim();
+    if (!NARY.has(chr) && !INTEGRALS.has(chr)) return "";
+    return node.__under || node.__over || node.__sub || node.__sup ? chr : "";
+  }
+
+  function naryXml(chr, node, operand) {
+    const under = mathBody(node.__under || node.__sub || null);
+    const over = mathBody(node.__over || node.__sup || null);
+    return `<m:nary><m:naryPr><m:chr m:val="${chr}"/><m:limLoc m:val="${INTEGRALS.has(chr) ? "subSup" : "undOvr"}"/></m:naryPr>` +
+      `${under ? `<m:sub>${under}</m:sub>` : "<m:sub/>"}${over ? `<m:sup>${over}</m:sup>` : "<m:sup/>"}` +
+      `<m:e>${operand}</m:e></m:nary>`;
+  }
+
+  function ommlRow(nodes, start = 0) {
+    let out = "";
+    for (let index = start; index < (nodes || []).length; index += 1) {
+      const chr = bigOperator(nodes[index]);
+      if (chr) {
+        out += naryXml(chr, nodes[index], ommlRow(nodes, index + 1));
+        return out;
+      }
+      out += ommlNode(nodes[index]);
+    }
+    return out;
+  }
+
+  function radical(body, degree) {
+    const inner = mathBody(body);
+    return degree ? `<m:rad><m:deg>${degree}</m:deg><m:e>${inner}</m:e></m:rad>`
+      : `<m:rad><m:radPr><m:degHide m:val="1"/></m:radPr><m:deg/><m:e>${inner}</m:e></m:rad>`;
+  }
+
+  function matrixXml(node) {
+    const rows = (node.children || []).filter((row) => row.tag === "mtr");
+    /* A table of one column is a stack of lines, not a grid: "2 + 2 = 4" over
+       "4 + 2 = 6" is a calculation, and Word's matrix pads every row for a
+       grid. An equation array stacks the same rows at ordinary line spacing,
+       which is what a multi-step derivation should look like. */
+    if (rows.length > 1 && rows.every((row) => (row.children || []).length === 1)) {
+      return `<m:eqArr><m:eqArrPr/>${rows.map((row) => `<m:e>${mathBody(row.children[0])}</m:e>`).join("")}</m:eqArr>`;
+    }
+    const columns = rows.reduce((max, row) => Math.max(max, (row.children || []).length), 1);
+    const rowXml = (row) => {
+      const cells = (row.children || []).map((cell) => `<m:e>${mathBody(cell)}</m:e>`);
+      while (cells.length < columns) cells.push("<m:e/>");
+      return `<m:mr>${cells.join("")}</m:mr>`;
+    };
+    return `<m:m><m:mPr><m:mcs><m:mc><m:mcPr><m:count m:val="${columns}"/><m:mcJc m:val="center"/></m:mcPr></m:mc></m:mcs></m:mPr>` +
+      `${rows.map(rowXml).join("")}</m:m>`;
+  }
+
+  /* \hat, \bar and friends arrive as mover nodes carrying accent="true". */
+  function accentXml(node) {
+    const parts = node.children || [];
+    const chr = textOf(parts[1]) || "\u0302";
+    const inner = mathBody(parts[0]);
+    if (chr === "\u00af") return `<m:bar><m:barPr><m:pos m:val="top"/></m:barPr><m:e>${inner}</m:e></m:bar>`;
+    return `<m:acc><m:accPr><m:chr m:val="${xml(chr)}"/></m:accPr><m:e>${inner}</m:e></m:acc>`;
+  }
+
+  function ommlCore(node) {
+    const children = node.children || [];
+    switch (node.tag) {
+      case "mrow":
+        return ommlRow(children);
+      case "mi":
+      case "mn":
+      case "mo":
+        return mathRun(textOf(node), node.attrs && node.attrs.mathvariant);
+      case "mtext":
+        return mathRun(textOf(node), true);
+      case "mspace":
+        return "";
+      case "mfrac": {
+        const noBar = String(node.attrs && node.attrs.linethickness) === "0";
+        return `<m:f>${noBar ? '<m:fPr><m:type m:val="noBar"/></m:fPr>' : ""}` +
+          `<m:num>${mathBody(children[0])}</m:num><m:den>${mathBody(children[1])}</m:den></m:f>`;
+      }
+      case "msqrt":
+        return radical(children[0], "");
+      case "mroot":
+        return radical(children[0], mathBody(children[1]));
+      case "menclose":
+        // The only enclosure the parser emits is \boxed{} - the source asked for it.
+        return `<m:borderBox><m:borderBoxPr/><m:e>${mathBody(children[0])}</m:e></m:borderBox>`;
+      case "mtable":
+        return matrixXml(node);
+      case "mover":
+        return accentXml(node);
+      default:
+        return ommlRow(children);
+    }
+  }
+
+  function ommlNode(node) {
+    if (!node || node.tag === "#text") return node ? mathRun(textOf(node)) : "";
+    const base = `<m:e>${ommlCore(node)}</m:e>`;
+    const sub = node.__sub ? mathBody(node.__sub) : "";
+    const sup = node.__sup ? mathBody(node.__sup) : "";
+    if (sub || sup) {
+      if (sub && sup) return `<m:sSubSup>${base}<m:sub>${sub}</m:sub><m:sup>${sup}</m:sup></m:sSubSup>`;
+      return sub ? `<m:sSub>${base}<m:sub>${sub}</m:sub></m:sSub>`
+        : `<m:sSup>${base}<m:sup>${sup}</m:sup></m:sSup>`;
+    }
+    const under = node.__under ? mathBody(node.__under) : "";
+    const over = node.__over ? mathBody(node.__over) : "";
+    if (under || over) {
+      if (under && over) return `<m:sSubSup>${base}<m:sub>${under}</m:sub><m:sup>${over}</m:sup></m:sSubSup>`;
+      return under ? `<m:limLow>${base}<m:lim>${under}</m:lim></m:limLow>`
+        : `<m:limUpp>${base}<m:lim>${over}</m:lim></m:limUpp>`;
+    }
+    return ommlCore(node);
+  }
+
+  /** TeX to a Word equation. Empty output means "not usable as maths", and the
+      caller keeps the readable-text fallback. */
+  function mathXml(tex, display) {
+    const source = mathSource(tex);
+    if (!source) return "";
+    const exporter = globalThis.AIExporter;
+    if (!exporter || typeof exporter.mathTree !== "function") return "";
+    const nodes = exporter.mathTree(source);
+    if (!nodes) return "";
+    const body = ommlRow(nodes);
+    if (!body) return "";
+    return display
+      ? `<m:oMathPara><m:oMathParaPr><m:jc m:val="center"/></m:oMathParaPr><m:oMath>${body}</m:oMath></m:oMathPara>`
+      : `<m:oMath>${body}</m:oMath>`;
+  }
+
   function inline(text, base = {}, codeShading) {
+    /* An escaped price is parked on a sentinel while the inline tokens are
+       found, then restored in the run text: scanning "\\$5 and \\$10"
+       directly paired the two signs into an equation and ate the sentence. */
     const source = String(text == null ? "" : text)
       .replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => " " + "$" + tex + "$" + " ")
-      .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => " " + "$" + tex + "$" + " ");
-    const pattern = /(\*\*[^*]+\*\*|\$[^$\n]+\$|`[^`]+`|\*[^*\n]+\*)/g;
+      .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => " " + "$" + tex + "$" + " ")
+      .replace(/\\\$/g, "\uE000");
+    /* $$...$$ arrives as inline text when a paragraph carries display
+       delimiters; matching it first keeps the outer dollars out of the Word
+       run. The single-dollar branch is the exporter's own token, so Word cannot
+       disagree with HTML about where a formula starts: the local "$[^$]+\$"
+       version used to read "$5 for $x$" as one equation, leaving "5 for" in
+       Word as maths and the real x^2 as prose. */
+    const mathSource = globalThis.AIExporter && globalThis.AIExporter.INLINE_MATH_SOURCE;
+    const pattern = new RegExp(
+      `(\\*\\*[^*]+\\*\\*|${mathSource || "\\$\\$[\\s\\S]+?\\$\\$|\\$[^$\\n]+\\$"}` + "|`[^`]+`|\\*[^*\\n]+\\*)",
+      "g"
+    );
     let out = "";
     let last = 0;
     let match;
@@ -227,12 +436,19 @@
       const token = match[0];
       if (token.startsWith("**")) out += run(token.slice(2, -2), { ...base, bold: true });
       else if (token.startsWith("`")) out += run(token.slice(1, -1), { ...base, mono: true, shading: codeShading });
-      else if (token.startsWith("$")) out += run(wordMath(token.slice(1, -1)), { ...base, math: true });
+      else if (token.startsWith("$$")) {
+        const tex = token.slice(2, -2);
+        out += mathXml(tex, false) || run(wordMath(tex), { ...base, math: true });
+      }
+      else if (token.startsWith("$")) {
+        // Word equations where the TeX parses; readable text where it does not.
+        out += mathXml(token.slice(1, -1), false) || run(wordMath(token.slice(1, -1)), { ...base, math: true });
+      }
       else out += run(token.slice(1, -1), { ...base, italic: true });
       last = match.index + token.length;
     }
     if (last < source.length) out += run(source.slice(last), base);
-    return out;
+    return out.replace(/\uE000/g, "$");
   }
 
   /* -------------------------------------------------------------- paragraphs */
@@ -242,13 +458,13 @@
    * emitted in that order rather than in the order it is passed.
    */
   function paragraphProperties({
-    style, keepNext, pageBreakBefore, numId, border, shading, before, after, line, indent, align, outline
+    style, keepNext, pageBreakBefore, numId, ilvl = 0, border, shading, before, after, line, indent, align, outline
   } = {}) {
     const parts = [];
     if (style) parts.push(`<w:pStyle w:val="${style}"/>`);
     if (keepNext) parts.push("<w:keepNext/>");
     if (pageBreakBefore) parts.push("<w:pageBreakBefore/>");
-    if (numId) parts.push(`<w:numPr><w:ilvl w:val="0"/><w:numId w:val="${numId}"/></w:numPr>`);
+    if (numId) parts.push(`<w:numPr><w:ilvl w:val="${Math.max(0, Math.min(8, Number(ilvl) || 0))}"/><w:numId w:val="${numId}"/></w:numPr>`);
     if (border) parts.push(border);
     if (shading) parts.push(`<w:shd w:val="clear" w:color="auto" w:fill="${shading}"/>`);
     if (before != null || after != null || line) {
@@ -393,13 +609,26 @@ ${style({
   /* ----------------------------------------------------------- numbering part */
 
   function numberingXml(orderedLists) {
-    const bullet = `<w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="\u2022"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="420" w:hanging="300"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="4338CA"/></w:rPr></w:lvl></w:abstractNum>`;
-    const decimal = `<w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="420" w:hanging="300"/></w:pPr></w:lvl></w:abstractNum>`;
+    /* Nine levels for both kinds: a nested list needs an ilvl that exists in
+       the abstract definition, or Word ignores the indent and keeps level 0. */
+    const bulletChars = ["\u2022", "\u25e6", "\u25aa", "\u2022", "\u25e6", "\u25aa", "\u2022", "\u25e6", "\u25aa"];
+    const bulletLevels = bulletChars.map((char, level) =>
+      `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${char}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${420 * (level + 1)}" w:hanging="300"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="4338CA"/></w:rPr></w:lvl>`
+    ).join("");
+    const decimalLevels = Array.from({ length: 9 }, (_, level) =>
+      `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%${level + 1}."/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${420 * (level + 1)}" w:hanging="300"/></w:pPr></w:lvl>`
+    ).join("");
+    const bullet = `<w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${bulletLevels}</w:abstractNum>`;
+    const decimal = `<w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>${decimalLevels}</w:abstractNum>`;
     const nums = ['<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>'];
-    orderedLists.forEach((_list, index) => {
+    orderedLists.forEach((list, index) => {
       // A fresh numId per ordered list restarts the count instead of carrying
-      // one conversation's numbering into the next list.
-      nums.push(`<w:num w:numId="${index + 2}"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>`);
+      // one conversation's numbering into the next list. Every level restarts
+      // too, so a nested list begins at 1 in its own scope.
+      const levels = Array.from({ length: 9 }, (_, level) =>
+        `<w:lvlOverride w:ilvl="${level}"><w:startOverride w:val="1"/></w:lvlOverride>`
+      ).join("");
+      nums.push(`<w:num w:numId="${index + 2}"><w:abstractNumId w:val="1"/>${levels}</w:num>`);
     });
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="${WORD_NS}">${bullet}${decimal}${nums.join("")}</w:numbering>`;
@@ -444,6 +673,30 @@ ${style({
 
   const IMAGE_TYPES = { png: "image/png", jpeg: "image/jpeg", gif: "image/gif" };
 
+  /* A data URI says image/png even when its bytes are 3 zeros. Word rejects
+     such a package, so the header decides rather than the MIME label. */
+  function hasImageSignature(bytes, extension) {
+    if (bytes.length < 12) return false;
+    if (extension === "png") {
+      return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+        bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+    }
+    if (extension === "jpeg") {
+      return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    }
+    if (extension === "gif") {
+      return matchAscii(bytes, 0, "GIF87a") || matchAscii(bytes, 0, "GIF89a");
+    }
+    return false;
+  }
+
+  function matchAscii(bytes, offset, text) {
+    for (let index = 0; index < text.length; index += 1) {
+      if (bytes[offset + index] !== text.charCodeAt(index)) return false;
+    }
+    return true;
+  }
+
   /** Only images the package can actually contain: inline raster data URIs. */
   function imagePart(source, media) {
     const match = /^data:image\/(png|jpe?g|gif);base64,([a-z0-9+/=\s]+)$/i.exec(String(source == null ? "" : source));
@@ -456,7 +709,7 @@ ${style({
       // Undecodable data is reported as a placeholder by the caller, never dropped silently.
       return null;
     }
-    if (!bytes.length) return null;
+    if (!bytes.length || !hasImageSignature(bytes, extension)) return null;
     const size = imageSize(bytes, extension) || { width: 800, height: 600 };
     const index = media.length + 1;
     const name = `image${index}.${extension}`;
@@ -642,17 +895,31 @@ ${style({
           break;
         }
         case "list": {
+          const items = Array.isArray(block.items) ? block.items : [];
+          const depths = Array.isArray(block.depths) ? block.depths : [];
+          const orders = Array.isArray(block.orders) ? block.orders : [];
+          const orderedAt = (index) => orders.length ? orders[index] !== false : Boolean(block.ordered);
+          let numId = 1;
+          let nestedOrderedId = 0;
           if (block.ordered) {
             context.orderedLists.push(block);
-            const numId = context.orderedLists.length + 1;
-            for (const item of block.items || []) {
-              out.push(paragraph(inline(item, {}, palette.inlineBg), { style: "Normal", numId, after: 60 }));
-            }
-          } else {
-            for (const item of block.items || []) {
-              out.push(paragraph(inline(item, {}, palette.inlineBg), { style: "Normal", numId: 1, after: 60 }));
-            }
+            numId = context.orderedLists.length + 1;
+          } else if (items.some((_item, index) => orderedAt(index))) {
+            /* An unordered list can contain a numbered sub-list. Word needs a
+               decimal numbering instance for it, or the sub-list degrades to
+               bullets and loses the order the source showed. */
+            context.orderedLists.push({ ...block, ordered: true });
+            nestedOrderedId = context.orderedLists.length + 1;
           }
+          items.forEach((item, index) => {
+            const ordered = orderedAt(index);
+            out.push(paragraph(inline(item, {}, palette.inlineBg), {
+              style: "Normal",
+              numId: ordered ? (block.ordered ? numId : nestedOrderedId) : 1,
+              ilvl: Number(depths[index]) || 0,
+              after: 60
+            }));
+          });
           break;
         }
         case "quote": {
@@ -670,7 +937,9 @@ ${style({
           out.push(imageXml(block, context));
           break;
         case "formula": {
-          out.push(paragraph(run(wordMath(block.tex), { math: true, color: palette.ink }), { style: "Formula" }));
+          const equation = mathXml(block.tex, true)
+            || run(wordMath(block.tex), { math: true, color: palette.ink });
+          out.push(paragraph(equation, { style: "Formula" }));
           break;
         }
         case "divider":
@@ -734,7 +1003,9 @@ ${style({
       .join("")}</w:pBdr>`;
   }
 
-  /** One paragraph per source line, so Word keeps indentation and blank lines. */
+  /** One paragraph per source line, so Word keeps indentation and blank lines.
+      In colour mode each line carries the same token colours as the PDF; the
+      black-and-white palette keeps the same runs but with its near-black inks. */
   function codeXml(block, context) {
     const { palette } = context;
     const output = Boolean(block.output);
@@ -746,12 +1017,27 @@ ${style({
     // A block that fits on a page is kept together; a long one must be allowed
     // to flow across pages instead of being pushed whole to a fresh page.
     const keepLines = context.keepBlocks !== false && lines.length <= 28;
+    const tokenizer = globalThis.AIExporter && globalThis.AIExporter.highlightTokens;
+    const tokenColors = {
+      kw: palette.tokKw, str: palette.tokStr, num: palette.tokNum,
+      com: palette.tokCom, fn: palette.tokFn, type: palette.tokType
+    };
+    const lineRuns = (line) => {
+      if (!line) return "";
+      if (output || typeof tokenizer !== "function") return run(line);
+      const tokens = tokenizer(line, block.language);
+      return tokens
+        .map((token) => (token.kind && tokenColors[token.kind]
+          ? run(token.text, { color: tokenColors[token.kind] })
+          : run(token.text)))
+        .join("");
+    };
     const parts = [paragraph(run(label, { bold: true, caps: true, size: 16 }), {
       style: labelStyle, keepNext: true, border: panelBorder(borderColor, ["top", "left", "right"])
     })];
     lines.forEach((line, index) => {
       const sides = index === lines.length - 1 ? ["left", "right", "bottom"] : ["left", "right"];
-      parts.push(paragraph(line ? run(line) : "", {
+      parts.push(paragraph(lineRuns(line), {
         style: lineStyle,
         border: panelBorder(borderColor, sides),
         keepNext: keepLines && index < lines.length - 1
@@ -792,7 +1078,6 @@ ${style({
     const settings = context.images || imageSettings();
     if (!settings.images) return "";
     if (block.assetId && settings.excluded && settings.excluded.has(block.assetId)) return "";
-    if (!settings.images) return "";
     const caption = block.caption || block.alt || "Image from the conversation";
     const part = imagePart(block.src, context.media);
     if (!part) {
@@ -871,7 +1156,7 @@ ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.ope
   function documentXml(body, page) {
     const orient = page.orientation === "landscape" ? ' w:orient="landscape"' : "";
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="${WORD_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+<w:document xmlns:w="${WORD_NS}" xmlns:m="${MATH_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
 <w:body>${body}<w:sectPr><w:pgSz w:w="${twips(page.width)}" w:h="${twips(page.height)}"${orient}/><w:pgMar w:top="${twips(page.margin.top)}" w:right="${twips(page.margin.right)}" w:bottom="${twips(page.margin.bottom)}" w:left="${twips(page.margin.left)}" w:header="708" w:footer="708" w:gutter="0"/><w:cols w:space="708"/><w:docGrid w:linePitch="360"/></w:sectPr></w:body>
 </w:document>`;
   }

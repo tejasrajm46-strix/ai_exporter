@@ -1,0 +1,975 @@
+{
+  "generatedAt": "2026-11-14T06:46:59.802Z",
+  "generator": "AI Exporter 1.0.0 artifact generator",
+  "summary": {
+    "messages": 4,
+    "blocks": 65,
+    "formulas": 19,
+    "images": 6,
+    "codeBlocks": 13,
+    "tables": 3
+  },
+  "validation": {
+    "ok": true,
+    "total": 4,
+    "counts": {
+      "user": 2,
+      "assistant": 2,
+      "system": 0,
+      "unknown": 0,
+      "empty": 0,
+      "code": 13,
+      "tables": 3,
+      "images": 6,
+      "formulas": 19
+    },
+    "issues": [],
+    "summary": "4 messages detected."
+  },
+  "files": [
+    {
+      "name": "conversation.html",
+      "format": "html",
+      "mime": "text/html",
+      "size": 134676,
+      "sha256": "ac0eb221f159ab8c",
+      "warnings": []
+    },
+    {
+      "name": "conversation.md",
+      "format": "markdown",
+      "mime": "text/markdown",
+      "size": 87553,
+      "sha256": "9388b7b0f3596767",
+      "warnings": []
+    },
+    {
+      "name": "conversation.txt",
+      "format": "txt",
+      "mime": "text/plain",
+      "size": 6496,
+      "sha256": "177c01784f91cd82",
+      "warnings": []
+    },
+    {
+      "name": "conversation.docx",
+      "format": "docx",
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 257838,
+      "sha256": "764af08b770d6c91",
+      "warnings": []
+    },
+    {
+      "name": "conversation.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 1303056,
+      "sha256": "eab4adba607fbc6c",
+      "warnings": [
+        {
+          "asset": "PNG",
+          "reason": "Rendered at 1x (1240 × 10452 px) instead of 2x so the image stays inside the canvas limit."
+        }
+      ],
+      "pixelWidth": 1240,
+      "pixelHeight": 10452,
+      "exportScale": 1,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation.json",
+      "format": "json",
+      "mime": "application/json",
+      "size": 95642,
+      "sha256": "4910c202de6b4720",
+      "warnings": []
+    },
+    {
+      "name": "table-headers.docx",
+      "format": "docx",
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 83183,
+      "sha256": "715198ac8462b12f",
+      "warnings": []
+    }
+  ],
+  "pdf": [
+    {
+      "path": "C:\\Users\\tejas\\Downloads\\STRIX_AI_EXPORTER_09\\STRIX_AI_Exporter\\tests\\output\\conversation-a4-portrait-normal.pdf",
+      "pages": 10,
+      "fonts": [
+        "/AAAAAA+PalatinoLinotype-Bold",
+        "/DAAAAA+CambriaMath",
+        "/IAAAAA+Consolas",
+        "/JAAAAA+Consolas-Italic"
+      ],
+      "page_details": [
+        {
+          "page": 1,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 732,
+          "blank": false,
+          "text": "Fractions, roots and matrices — a complete\nexport ﬁxture\nChatGPT · Artifact fixture · November 13, 2026 · 4 messages\nUSER\nCan you walk me through fractions, roots, sums and matrices — starting from \n𝑎\n𝑏 and √𝑥 + 1? Include code\nand a comparison table.\nASSISTANT\n1. Fractions and roots\nA fraction is a division written vertically. The same value appears inline as \n𝑎\n𝑏 and as a display equation. Bold,\nitalic, inline code and a [reference link](https://example.com/docs) must all survive the export.\nPrices beside mathematics: it costs $5 for 𝑥2 units and $10 for the rest.\nAn empty formula is not a failure.\n𝑎\n𝑏\n1\n𝑎\n𝑏\n√𝑥 + 1\n√𝑥3\n𝑥𝑛 + 1\n𝑎𝑖𝑗\n𝑥2 + 1\n𝑥 − 1\n2. Sums, integrals and limits\n𝑛\n∑\n𝑖 = 1\n𝑖\n∫ 0\n1 𝑥2 𝑑𝑥\nlim\n𝑥 → 0\nsin 𝑥\n𝑥\nsin 𝑥\n𝑥",
+          "fonts": [
+            "/AAAAAA+PalatinoLinotype-Bold",
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 2,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 949,
+          "blank": false,
+          "text": "3. Matrices and set-builder notation\n[ 𝑎 𝑏𝑐 𝑑 ]\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\n{ 𝑥2 𝑥 ≥ 0−𝑥 𝑥 < 0\n( 𝑎 + 𝑏 ) 2 = 𝑎2 + 2𝑎𝑏 + 𝑏2\n( 𝑎 − 𝑏 ) 2 = 𝑎2 − 2𝑎𝑏 + 𝑏2\n( 52 ) = 10, 2−1 = 8 ( mod 15 )\nNested steps\nComparison\nConcept Meaning\nFraction A quotient of two expressions.\nRoot The inverse of an exponent.\nLimit The value a sequence approaches.\nOperation Example Cost\nRead values[1] O(1)\nTraverse for each value O(n)\nLong reference https://example.com/reference/very-\nlong-path-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-very-long-\npath-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-very-long-\npath-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-notes\nWrap inside the cell, never overlap\nthe next column\nRead the expression from the outside in.\n1. Resolve the innermost fraction first.\n2. Apply the root or exponent.\nCheck the result against a numeric estimate.",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 3,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1001,
+          "blank": false,
+          "text": "n n² √n 2ⁿ n!\n1 1 1.000 2 1\n2 4 1.414 4 2\n3 9 1.732 8 6\n4 16 2.000 16 24\nNOTE\nevery table cell is escaped text. Literal <img src=x onerror=alert(1)> must never become active\nmarkup.\nWARNING\nprinting a very wide table can clip its last column if the page is narrow; use landscape or narrower\nmargins.\nKEY TAKEAWAY\na formula is readable in every format — MathML in HTML and PDF, OMML in Word, TeX in Markdown,\nplain words in TXT.\n4. Code in several languages\nPython\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\nfrom dataclasses import dataclass\n@dataclass\nclass Fraction:\n    numerator: int\n    denominator: int\n    def value(self) -> float:\n        if self.denominator == 0:\n            raise ZeroDivisionError(\"denominator must not be zero\")\n        return self.numerator / self.denominator\ndef simplify(part: Fraction) -> Fraction:\n    common = math.gcd(part.numerator, part.denominator)\n    return Fraction(part.numerator // common, part.denominator // common)\nprint(simplify(Fraction(12, 18)).value())",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 4,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 821,
+          "blank": false,
+          "text": "Javascript\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\nconst values = [3, 1, 4, 1, 5, 9, 2, 6];\nfunction runningTotal(list) {\n  return list.reduce((total, value, index) => {\n    const next = total + value;\n    console.log(\"step \" + (index + 1) + \": \" + next);\n    return next;\n  }, 0);\n}\nconsole.log(runningTotal(values));\nCpp\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> values{10, 20, 30};\nfor (int value : values) {\nstd::cout << value << \" \";\n}\n    const long long total = 10 + 20 + 30;\n    std::cout << \"\\ntotal: \" << total << std::endl;\n    return 0;\n}\nOutput\n10 20 30\ntotal: 60\nBash\n1\n2\n3\n4\n5\n6\n7\n#!/usr/bin/env bash\nset -euo pipefail\nfor file in tests/output/*.pdf; do\n    pages=$(pdfinfo \"$file\" | awk '/^Pages/ {print $2}')\n    printf '%s -> %s pages\\n' \"$file\" \"$pages\"\ndone",
+          "fonts": [
+            "/IAAAAA+Consolas",
+            "/JAAAAA+Consolas-Italic"
+          ]
+        },
+        {
+          "page": 5,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 931,
+          "blank": false,
+          "text": "Sql\n1\n2\n3\n4\n5\n6\n7\n8\nSELECT m.role,\n       COUNT(*) AS blocks,\n       MAX(LENGTH(b.text)) AS longest\nFROM messages AS m\nJOIN blocks AS b ON b.message_id = m.id\nWHERE m.exported_at >= DATE '2026-01-01'\nGROUP BY m.role\nORDER BY blocks DESC;\nJson\n1\n2\n3\n4\n5\n6\n{\n  \"name\": \"café notes\",\n  \"version\": 1,\n  \"formats\": [\"pdf\", \"docx\", \"markdown\", \"txt\", \"json\", \"html\", \"png\"],\n  \"limits\": { \"side\": 16384, \"pixels\": 16777216 }\n}\nHtml\n1\n2\n3\n4\n<section class=\"callout callout--note\">\n  <h3>Note</h3>\n  <p>Markup in the source stays text, never becomes an element.</p>\n</section>\nCss\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n.document {\n  max-width: 190mm;\n  margin: 0 auto;\n  font-family: \"Source Serif 4\", Georgia, serif;\n}\n@media print {\n  .document { break-inside: auto; }\n  thead { display: table-header-group; }\n}\nRust\n1\n2\n3\n4\n5\nfn gcd(mut a: u64, mut b: u64) -> u64 {\n    while b != 0 {\n        let remainder = a % b;\n        a = b;\n        b = remainder;",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 6,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 848,
+          "blank": false,
+          "text": "6\n7\n8\n9\n10\n11\n12\n    }\n    a\n}\nfn main() {\n    println!(\"{}\", gcd(12, 18));\n}\nGo\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\npackage main\nimport \"fmt\"\nfunc main() {\nvalues := []int{10, 20, 30}\ntotal := 0\nfor _, value := range values {\ntotal += value\n}\nfmt.Println(total)\n}\nJava\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\npublic final class ArraySum {\n    private ArraySum() {}\n    public static int total(int[] values) {\n        int sum = 0;\n        for (int value : values) {\n            sum += value;\n        }\n        return sum;\n    }\n    public static void main(String[] args) {\n        System.out.println(total(new int[] {10, 20, 30}));\n    }\n}\nTypescript\n1\n2\n3\n4\n5\ntype Block = { type: string; text?: string };\nfunction words(blocks: Block[]): number {\n  return blocks.reduce((total, block) => {\n    return total + (block.text ? block.text.split(/\\s+/).length : 0);",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 7,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 191,
+          "blank": false,
+          "text": "6\n7\n8\n9\n  }, 0);\n}\nconsole.log(words([{ type: \"paragraph\", text: \"three short words\" }]));\n5. Figures\nDIAGRAM Pipeline diagram: parse, normalise, render, export\nFigure 1: the export pipeline.",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 8,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 135,
+          "blank": false,
+          "text": "CHART Bar chart of exported pages per week\nFigure 2: a JPEG chart.\nDIAGRAM Gradient WebP artwork\nFigure 3: WebP is transcoded for Word.",
+          "fonts": []
+        },
+        {
+          "page": 9,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 610,
+          "blank": false,
+          "text": "IMAGE Transparent circular mark\nFigure 4: transparency preserved in PNG.\nIMAGE Deliberately broken image bytes\nDeliberately broken image bytes\nFigure 5: broken assets are reported, never silently dropped.\nImage not embedded: Remote image blocked by default\n6. Practice question\nQ1. Which expression is equivalent to \n𝑥2 − 1\n𝑥 − 1 for 𝑥 ≠ 1?\nA. 𝑥 − 1\nB. 𝑥 + 1\nC. 𝑥2 + 1\nD. 1\nFootnote blocks are not part of the core model; their text is still carried rather than dropped.\nA final paragraph with a very long unbroken token,\nhttps://example.com/segmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegme",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 10,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 403,
+          "blank": false,
+          "text": "ntsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegments\negmentsegmentsegmentsegmentsegmentsegmentsegmentsegment, to prove wrapping never widens the\npage.\nUSER\nAnd the set-builder form for a coset, 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }?\nASSISTANT\nYes — the coset is written 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 } and the limit is lim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1.\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\nlim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        }
+      ],
+      "blank_pages": [],
+      "text_chars": 6621
+    },
+    {
+      "path": "C:\\Users\\tejas\\Downloads\\STRIX_AI_EXPORTER_09\\STRIX_AI_Exporter\\tests\\output\\conversation-letter-landscape-narrow.pdf",
+      "pages": 14,
+      "fonts": [
+        "/AAAAAA+PalatinoLinotype-Bold",
+        "/DAAAAA+CambriaMath",
+        "/IAAAAA+Consolas",
+        "/JAAAAA+Consolas-Italic"
+      ],
+      "page_details": [
+        {
+          "page": 1,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 653,
+          "blank": false,
+          "text": "Fractions, roots and matrices — a complete export ﬁxture\nChatGPT · Artifact fixture · November 13, 2026 · 4 messages\nUSER\nCan you walk me through fractions, roots, sums and matrices — starting from \n𝑎\n𝑏 and √𝑥 + 1? Include code and a comparison table.\nASSISTANT\n1. Fractions and roots\nA fraction is a division written vertically. The same value appears inline as \n𝑎\n𝑏 and as a display equation. Bold, italic, inline code and a [reference link]\n(https://example.com/docs) must all survive the export.\nPrices beside mathematics: it costs $5 for 𝑥2 units and $10 for the rest.\nAn empty formula is not a failure.\n𝑎\n𝑏\n1\n𝑎\n𝑏\n√𝑥 + 1\n√𝑥3\n𝑥𝑛 + 1\n𝑎𝑖𝑗\n𝑥2 + 1\n𝑥 − 1",
+          "fonts": [
+            "/AAAAAA+PalatinoLinotype-Bold",
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 2,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 430,
+          "blank": false,
+          "text": "2. Sums, integrals and limits\n𝑛\n∑\n𝑖 = 1\n𝑖\n∫ 0\n1 𝑥2 𝑑𝑥\nlim\n𝑥 → 0\nsin 𝑥\n𝑥\nsin 𝑥\n𝑥\n3. Matrices and set-builder notation\n[ 𝑎 𝑏𝑐 𝑑 ]\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\n{ 𝑥2 𝑥 ≥ 0−𝑥 𝑥 < 0\n( 𝑎 + 𝑏 ) 2 = 𝑎2 + 2𝑎𝑏 + 𝑏2\n( 𝑎 − 𝑏 ) 2 = 𝑎2 − 2𝑎𝑏 + 𝑏2\n( 52 ) = 10, 2−1 = 8 ( mod 15 )\nNested steps\nRead the expression from the outside in.\n1. Resolve the innermost fraction first.\n2. Apply the root or exponent.\nCheck the result against a numeric estimate.",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 3,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 777,
+          "blank": false,
+          "text": "Comparison\nConcept Meaning\nFraction A quotient of two expressions.\nRoot The inverse of an exponent.\nLimit The value a sequence approaches.\nOperation Example Cost\nRead values[1] O(1)\nTraverse for each value O(n)\nLong reference https://example.com/reference/very-long-path-\nsegment-very-long-path-segment-very-long-path-\nsegment-very-long-path-segment-very-long-path-\nsegment-very-long-path-segment-very-long-path-\nsegment-very-long-path-segment-very-long-path-\nsegment-very-long-path-segment-very-long-path-\nsegment-very-long-path-segment-notes\nWrap inside the cell, never overlap the next column\nn n² √n 2ⁿ n!\n1 1 1.000 2 1\n2 4 1.414 4 2\n3 9 1.732 8 6\n4 16 2.000 16 24\nNOTE\nevery table cell is escaped text. Literal <img src=x onerror=alert(1)> must never become active markup.",
+          "fonts": []
+        },
+        {
+          "page": 4,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 875,
+          "blank": false,
+          "text": "WARNING\nprinting a very wide table can clip its last column if the page is narrow; use landscape or narrower margins.\nKEY TAKEAWAY\na formula is readable in every format — MathML in HTML and PDF, OMML in Word, TeX in Markdown, plain words in TXT.\n4. Code in several languages\nPython\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\nfrom dataclasses import dataclass\n@dataclass\nclass Fraction:\n    numerator: int\n    denominator: int\n    def value(self) -> float:\n        if self.denominator == 0:\n            raise ZeroDivisionError(\"denominator must not be zero\")\n        return self.numerator / self.denominator\ndef simplify(part: Fraction) -> Fraction:\n    common = math.gcd(part.numerator, part.denominator)\n    return Fraction(part.numerator // common, part.denominator // common)\nprint(simplify(Fraction(12, 18)).value())\nJavascript\n1\n2\nconst values = [3, 1, 4, 1, 5, 9, 2, 6];",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 5,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 564,
+          "blank": false,
+          "text": "3\n4\n5\n6\n7\n8\n9\n10\n11\nfunction runningTotal(list) {\n  return list.reduce((total, value, index) => {\n    const next = total + value;\n    console.log(\"step \" + (index + 1) + \": \" + next);\n    return next;\n  }, 0);\n}\nconsole.log(runningTotal(values));\nCpp\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> values{10, 20, 30};\nfor (int value : values) {\nstd::cout << value << \" \";\n}\n    const long long total = 10 + 20 + 30;\n    std::cout << \"\\ntotal: \" << total << std::endl;\n    return 0;\n}\nOutput\n10 20 30\ntotal: 60",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 6,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 686,
+          "blank": false,
+          "text": "Bash\n1\n2\n3\n4\n5\n6\n7\n#!/usr/bin/env bash\nset -euo pipefail\nfor file in tests/output/*.pdf; do\n    pages=$(pdfinfo \"$file\" | awk '/^Pages/ {print $2}')\n    printf '%s -> %s pages\\n' \"$file\" \"$pages\"\ndone\nSql\n1\n2\n3\n4\n5\n6\n7\n8\nSELECT m.role,\n       COUNT(*) AS blocks,\n       MAX(LENGTH(b.text)) AS longest\nFROM messages AS m\nJOIN blocks AS b ON b.message_id = m.id\nWHERE m.exported_at >= DATE '2026-01-01'\nGROUP BY m.role\nORDER BY blocks DESC;\nJson\n1\n2\n3\n4\n5\n6\n{\n  \"name\": \"café notes\",\n  \"version\": 1,\n  \"formats\": [\"pdf\", \"docx\", \"markdown\", \"txt\", \"json\", \"html\", \"png\"],\n  \"limits\": { \"side\": 16384, \"pixels\": 16777216 }\n}\nHtml\n1\n2\n<section class=\"callout callout--note\">\n  <h3>Note</h3>",
+          "fonts": [
+            "/IAAAAA+Consolas",
+            "/JAAAAA+Consolas-Italic"
+          ]
+        },
+        {
+          "page": 7,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 523,
+          "blank": false,
+          "text": "3\n4\n  <p>Markup in the source stays text, never becomes an element.</p>\n</section>\nCss\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n.document {\n  max-width: 190mm;\n  margin: 0 auto;\n  font-family: \"Source Serif 4\", Georgia, serif;\n}\n@media print {\n  .document { break-inside: auto; }\n  thead { display: table-header-group; }\n}\nRust\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\nfn gcd(mut a: u64, mut b: u64) -> u64 {\n    while b != 0 {\n        let remainder = a % b;\n        a = b;\n        b = remainder;\n    }\n    a\n}\nfn main() {\n    println!(\"{}\", gcd(12, 18));\n}",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 8,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 548,
+          "blank": false,
+          "text": "Go\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\npackage main\nimport \"fmt\"\nfunc main() {\nvalues := []int{10, 20, 30}\ntotal := 0\nfor _, value := range values {\ntotal += value\n}\nfmt.Println(total)\n}\nJava\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\npublic final class ArraySum {\n    private ArraySum() {}\n    public static int total(int[] values) {\n        int sum = 0;\n        for (int value : values) {\n            sum += value;\n        }\n        return sum;\n    }\n    public static void main(String[] args) {\n        System.out.println(total(new int[] {10, 20, 30}));\n    }\n}",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 9,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 312,
+          "blank": false,
+          "text": "Typescript\n1\n2\n3\n4\n5\n6\n7\n8\n9\ntype Block = { type: string; text?: string };\nfunction words(blocks: Block[]): number {\n  return blocks.reduce((total, block) => {\n    return total + (block.text ? block.text.split(/\\s+/).length : 0);\n  }, 0);\n}\nconsole.log(words([{ type: \"paragraph\", text: \"three short words\" }]));",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 10,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 100,
+          "blank": false,
+          "text": "5. Figures\nDIAGRAM Pipeline diagram: parse, normalise, render, export\nFigure 1: the export pipeline.",
+          "fonts": []
+        },
+        {
+          "page": 11,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 66,
+          "blank": false,
+          "text": "CHART Bar chart of exported pages per week\nFigure 2: a JPEG chart.",
+          "fonts": []
+        },
+        {
+          "page": 12,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 68,
+          "blank": false,
+          "text": "DIAGRAM Gradient WebP artwork\nFigure 3: WebP is transcoded for Word.",
+          "fonts": []
+        },
+        {
+          "page": 13,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 256,
+          "blank": false,
+          "text": "IMAGE Transparent circular mark\nFigure 4: transparency preserved in PNG.\nIMAGE Deliberately broken image bytes\nDeliberately broken image bytes\nFigure 5: broken assets are reported, never silently dropped.\nImage not embedded: Remote image blocked by default",
+          "fonts": []
+        },
+        {
+          "page": 14,
+          "width_mm": 279.4,
+          "height_mm": 215.9,
+          "chars": 756,
+          "blank": false,
+          "text": "6. Practice question\nQ1. Which expression is equivalent to \n𝑥2 − 1\n𝑥 − 1 for 𝑥 ≠ 1?\nA. 𝑥 − 1\nB. 𝑥 + 1\nC. 𝑥2 + 1\nD. 1\nFootnote blocks are not part of the core model; their text is still carried rather than dropped.\nA final paragraph with a very long unbroken token,\nhttps://example.com/segmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegments\negmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegment, to prove wrapping\nnever widens the page.\nUSER\nAnd the set-builder form for a coset, 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }?\nASSISTANT\nYes — the coset is written 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 } and the limit is lim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1.\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\nlim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        }
+      ],
+      "blank_pages": [],
+      "text_chars": 6614
+    },
+    {
+      "path": "C:\\Users\\tejas\\Downloads\\STRIX_AI_EXPORTER_09\\STRIX_AI_Exporter\\tests\\output\\conversation-a4-portrait-wide.pdf",
+      "pages": 10,
+      "fonts": [
+        "/AAAAAA+PalatinoLinotype-Bold",
+        "/DAAAAA+CambriaMath",
+        "/IAAAAA+Consolas",
+        "/JAAAAA+Consolas-Italic"
+      ],
+      "page_details": [
+        {
+          "page": 1,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 724,
+          "blank": false,
+          "text": "Fractions, roots and matrices — a\ncomplete export ﬁxture\nChatGPT · Artifact fixture · November 13, 2026 · 4 messages\nUSER\nCan you walk me through fractions, roots, sums and matrices — starting from \n𝑎\n𝑏 and √𝑥 + 1?\nInclude code and a comparison table.\nASSISTANT\n1. Fractions and roots\nA fraction is a division written vertically. The same value appears inline as \n𝑎\n𝑏 and as a display\nequation. Bold, italic, inline code and a [reference link](https://example.com/docs) must all\nsurvive the export.\nPrices beside mathematics: it costs $5 for 𝑥2 units and $10 for the rest.\nAn empty formula is not a failure.\n𝑎\n𝑏\n1\n𝑎\n𝑏\n√𝑥 + 1\n√𝑥3\n𝑥𝑛 + 1\n𝑎𝑖𝑗\n𝑥2 + 1\n𝑥 − 1\n2. Sums, integrals and limits\n𝑛\n∑\n𝑖 = 1\n𝑖\n∫ 0\n1 𝑥2 𝑑𝑥\nlim\n𝑥 → 0\nsin 𝑥\n𝑥",
+          "fonts": [
+            "/AAAAAA+PalatinoLinotype-Bold",
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 2,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 569,
+          "blank": false,
+          "text": "sin 𝑥\n𝑥\n3. Matrices and set-builder notation\n[ 𝑎 𝑏𝑐 𝑑 ]\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\n{ 𝑥2 𝑥 ≥ 0−𝑥 𝑥 < 0\n( 𝑎 + 𝑏 ) 2 = 𝑎2 + 2𝑎𝑏 + 𝑏2\n( 𝑎 − 𝑏 ) 2 = 𝑎2 − 2𝑎𝑏 + 𝑏2\n( 52 ) = 10, 2−1 = 8 ( mod 15 )\nNested steps\nComparison\nConcept Meaning\nFraction A quotient of two expressions.\nRoot The inverse of an exponent.\nLimit The value a sequence approaches.\nOperation Example Cost\nRead values[1] O(1)\nTraverse for each value O(n)\nRead the expression from the outside in.\n1. Resolve the innermost fraction first.\n2. Apply the root or exponent.\nCheck the result against a numeric estimate.",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 3,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 841,
+          "blank": false,
+          "text": "Operation Example Cost\nLong reference https://example.com/reference/ve\nry-long-path-segment-very-long-\npath-segment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-very-long-path-\nsegment-notes\nWrap inside the cell, never\noverlap the next column\nn n² √n 2ⁿ n!\n1 1 1.000 2 1\n2 4 1.414 4 2\n3 9 1.732 8 6\n4 16 2.000 16 24\nNOTE\nevery table cell is escaped text. Literal <img src=x onerror=alert(1)> must never become active\nmarkup.\nWARNING\nprinting a very wide table can clip its last column if the page is narrow; use landscape or\nnarrower margins.\nKEY TAKEAWAY\na formula is readable in every format — MathML in HTML and PDF, OMML in Word, TeX in\nMarkdown, plain words in TXT.",
+          "fonts": []
+        },
+        {
+          "page": 4,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1046,
+          "blank": false,
+          "text": "4. Code in several languages\nPython\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\nfrom dataclasses import dataclass\n@dataclass\nclass Fraction:\n    numerator: int\n    denominator: int\n    def value(self) -> float:\n        if self.denominator == 0:\n            raise ZeroDivisionError(\"denominator must not be zero\")\n        return self.numerator / self.denominator\ndef simplify(part: Fraction) -> Fraction:\n    common = math.gcd(part.numerator, part.denominator)\n    return Fraction(part.numerator // common, part.denominator // common)\nprint(simplify(Fraction(12, 18)).value())\nJavascript\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\nconst values = [3, 1, 4, 1, 5, 9, 2, 6];\nfunction runningTotal(list) {\n  return list.reduce((total, value, index) => {\n    const next = total + value;\n    console.log(\"step \" + (index + 1) + \": \" + next);\n    return next;\n  }, 0);\n}\nconsole.log(runningTotal(values));\nCpp\n1\n2\n3\n4\n5\n6\n7\n8\n9\n#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> values{10, 20, 30};\nfor (int value : values) {\nstd::cout << value << \" \";\n}",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 5,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 834,
+          "blank": false,
+          "text": "10\n11\n12\n13\n    const long long total = 10 + 20 + 30;\n    std::cout << \"\\ntotal: \" << total << std::endl;\n    return 0;\n}\nOutput\n10 20 30\ntotal: 60\nBash\n1\n2\n3\n4\n5\n6\n7\n#!/usr/bin/env bash\nset -euo pipefail\nfor file in tests/output/*.pdf; do\n    pages=$(pdfinfo \"$file\" | awk '/^Pages/ {print $2}')\n    printf '%s -> %s pages\\n' \"$file\" \"$pages\"\ndone\nSql\n1\n2\n3\n4\n5\n6\n7\n8\nSELECT m.role,\n       COUNT(*) AS blocks,\n       MAX(LENGTH(b.text)) AS longest\nFROM messages AS m\nJOIN blocks AS b ON b.message_id = m.id\nWHERE m.exported_at >= DATE '2026-01-01'\nGROUP BY m.role\nORDER BY blocks DESC;\nJson\n1\n2\n3\n4\n5\n6\n{\n  \"name\": \"café notes\",\n  \"version\": 1,\n  \"formats\": [\"pdf\", \"docx\", \"markdown\", \"txt\", \"json\", \"html\", \"png\"],\n  \"limits\": { \"side\": 16384, \"pixels\": 16777216 }\n}\nHtml\n1\n2\n<section class=\"callout callout--note\">\n  <h3>Note</h3>",
+          "fonts": [
+            "/IAAAAA+Consolas",
+            "/JAAAAA+Consolas-Italic"
+          ]
+        },
+        {
+          "page": 6,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 701,
+          "blank": false,
+          "text": "3\n4\n  <p>Markup in the source stays text, never becomes an element.</p>\n</section>\nCss\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n.document {\n  max-width: 190mm;\n  margin: 0 auto;\n  font-family: \"Source Serif 4\", Georgia, serif;\n}\n@media print {\n  .document { break-inside: auto; }\n  thead { display: table-header-group; }\n}\nRust\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\nfn gcd(mut a: u64, mut b: u64) -> u64 {\n    while b != 0 {\n        let remainder = a % b;\n        a = b;\n        b = remainder;\n    }\n    a\n}\nfn main() {\n    println!(\"{}\", gcd(12, 18));\n}\nGo\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\npackage main\nimport \"fmt\"\nfunc main() {\nvalues := []int{10, 20, 30}\ntotal := 0\nfor _, value := range values {\ntotal += value\n}\nfmt.Println(total)\n}",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 7,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 683,
+          "blank": false,
+          "text": "Java\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\npublic final class ArraySum {\n    private ArraySum() {}\n    public static int total(int[] values) {\n        int sum = 0;\n        for (int value : values) {\n            sum += value;\n        }\n        return sum;\n    }\n    public static void main(String[] args) {\n        System.out.println(total(new int[] {10, 20, 30}));\n    }\n}\nTypescript\n1\n2\n3\n4\n5\n6\n7\n8\n9\ntype Block = { type: string; text?: string };\nfunction words(blocks: Block[]): number {\n  return blocks.reduce((total, block) => {\n    return total + (block.text ? block.text.split(/\\s+/).length : 0);\n  }, 0);\n}\nconsole.log(words([{ type: \"paragraph\", text: \"three short words\" }]));",
+          "fonts": [
+            "/IAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 8,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 167,
+          "blank": false,
+          "text": "5. Figures\nDIAGRAM Pipeline diagram: parse, normalise, render, export\nFigure 1: the export pipeline.\nCHART Bar chart of exported pages per week\nFigure 2: a JPEG chart.",
+          "fonts": []
+        },
+        {
+          "page": 9,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 141,
+          "blank": false,
+          "text": "DIAGRAM Gradient WebP artwork\nFigure 3: WebP is transcoded for Word.\nIMAGE Transparent circular mark\nFigure 4: transparency preserved in PNG.",
+          "fonts": []
+        },
+        {
+          "page": 10,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 941,
+          "blank": false,
+          "text": "IMAGE Deliberately broken image bytes\nDeliberately broken image bytes\nFigure 5: broken assets are reported, never silently dropped.\nImage not embedded: Remote image blocked by default\n6. Practice question\nQ1. Which expression is equivalent to \n𝑥2 − 1\n𝑥 − 1 for 𝑥 ≠ 1?\nA. 𝑥 − 1\nB. 𝑥 + 1\nC. 𝑥2 + 1\nD. 1\nFootnote blocks are not part of the core model; their text is still carried rather than dropped.\nA final paragraph with a very long unbroken token,\nhttps://example.com/segmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmen\ntsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentse\ngmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegment, to prove\nwrapping never widens the page.\nUSER\nAnd the set-builder form for a coset, 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }?\nASSISTANT\nYes — the coset is written 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 } and the limit is lim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1.\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\nlim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1",
+          "fonts": [
+            "/DAAAAA+CambriaMath"
+          ]
+        }
+      ],
+      "blank_pages": [],
+      "text_chars": 6647
+    },
+    {
+      "path": "C:\\Users\\tejas\\Downloads\\STRIX_AI_EXPORTER_09\\STRIX_AI_Exporter\\tests\\output\\conversation-a4-cover.pdf",
+      "pages": 11,
+      "fonts": [
+        "/BAAAAA+PalatinoLinotype-Bold",
+        "/EAAAAA+CambriaMath",
+        "/JAAAAA+Consolas",
+        "/KAAAAA+Consolas-Italic"
+      ],
+      "page_details": [
+        {
+          "page": 1,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 245,
+          "blank": false,
+          "text": "FULL TRANSCRIPT\nFractions, roots and\nmatrices — a complete\nexport ﬁxture\nEvery prompt and every answer, in order\nPlatform ChatGPT\nModel Artifact fixture\nTotal Messages 4 messages\nExported On November 13, 2026 at 2:30 PM\nFormat PDF (A4, Portrait)",
+          "fonts": [
+            "/BAAAAA+PalatinoLinotype-Bold"
+          ]
+        },
+        {
+          "page": 2,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 732,
+          "blank": false,
+          "text": "Fractions, roots and matrices — a complete\nexport ﬁxture\nChatGPT · Artifact fixture · November 13, 2026 · 4 messages\nUSER\nCan you walk me through fractions, roots, sums and matrices — starting from \n𝑎\n𝑏 and √𝑥 + 1? Include code\nand a comparison table.\nASSISTANT\n1. Fractions and roots\nA fraction is a division written vertically. The same value appears inline as \n𝑎\n𝑏 and as a display equation. Bold,\nitalic, inline code and a [reference link](https://example.com/docs) must all survive the export.\nPrices beside mathematics: it costs $5 for 𝑥2 units and $10 for the rest.\nAn empty formula is not a failure.\n𝑎\n𝑏\n1\n𝑎\n𝑏\n√𝑥 + 1\n√𝑥3\n𝑥𝑛 + 1\n𝑎𝑖𝑗\n𝑥2 + 1\n𝑥 − 1\n2. Sums, integrals and limits\n𝑛\n∑\n𝑖 = 1\n𝑖\n∫ 0\n1 𝑥2 𝑑𝑥\nlim\n𝑥 → 0\nsin 𝑥\n𝑥\nsin 𝑥\n𝑥",
+          "fonts": [
+            "/BAAAAA+PalatinoLinotype-Bold",
+            "/EAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 3,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 949,
+          "blank": false,
+          "text": "3. Matrices and set-builder notation\n[ 𝑎 𝑏𝑐 𝑑 ]\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\n{ 𝑥2 𝑥 ≥ 0−𝑥 𝑥 < 0\n( 𝑎 + 𝑏 ) 2 = 𝑎2 + 2𝑎𝑏 + 𝑏2\n( 𝑎 − 𝑏 ) 2 = 𝑎2 − 2𝑎𝑏 + 𝑏2\n( 52 ) = 10, 2−1 = 8 ( mod 15 )\nNested steps\nComparison\nConcept Meaning\nFraction A quotient of two expressions.\nRoot The inverse of an exponent.\nLimit The value a sequence approaches.\nOperation Example Cost\nRead values[1] O(1)\nTraverse for each value O(n)\nLong reference https://example.com/reference/very-\nlong-path-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-very-long-\npath-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-very-long-\npath-segment-very-long-path-\nsegment-very-long-path-segment-\nvery-long-path-segment-notes\nWrap inside the cell, never overlap\nthe next column\nRead the expression from the outside in.\n1. Resolve the innermost fraction first.\n2. Apply the root or exponent.\nCheck the result against a numeric estimate.",
+          "fonts": [
+            "/EAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 4,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1001,
+          "blank": false,
+          "text": "n n² √n 2ⁿ n!\n1 1 1.000 2 1\n2 4 1.414 4 2\n3 9 1.732 8 6\n4 16 2.000 16 24\nNOTE\nevery table cell is escaped text. Literal <img src=x onerror=alert(1)> must never become active\nmarkup.\nWARNING\nprinting a very wide table can clip its last column if the page is narrow; use landscape or narrower\nmargins.\nKEY TAKEAWAY\na formula is readable in every format — MathML in HTML and PDF, OMML in Word, TeX in Markdown,\nplain words in TXT.\n4. Code in several languages\nPython\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\nfrom dataclasses import dataclass\n@dataclass\nclass Fraction:\n    numerator: int\n    denominator: int\n    def value(self) -> float:\n        if self.denominator == 0:\n            raise ZeroDivisionError(\"denominator must not be zero\")\n        return self.numerator / self.denominator\ndef simplify(part: Fraction) -> Fraction:\n    common = math.gcd(part.numerator, part.denominator)\n    return Fraction(part.numerator // common, part.denominator // common)\nprint(simplify(Fraction(12, 18)).value())",
+          "fonts": [
+            "/JAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 5,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 821,
+          "blank": false,
+          "text": "Javascript\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\nconst values = [3, 1, 4, 1, 5, 9, 2, 6];\nfunction runningTotal(list) {\n  return list.reduce((total, value, index) => {\n    const next = total + value;\n    console.log(\"step \" + (index + 1) + \": \" + next);\n    return next;\n  }, 0);\n}\nconsole.log(runningTotal(values));\nCpp\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> values{10, 20, 30};\nfor (int value : values) {\nstd::cout << value << \" \";\n}\n    const long long total = 10 + 20 + 30;\n    std::cout << \"\\ntotal: \" << total << std::endl;\n    return 0;\n}\nOutput\n10 20 30\ntotal: 60\nBash\n1\n2\n3\n4\n5\n6\n7\n#!/usr/bin/env bash\nset -euo pipefail\nfor file in tests/output/*.pdf; do\n    pages=$(pdfinfo \"$file\" | awk '/^Pages/ {print $2}')\n    printf '%s -> %s pages\\n' \"$file\" \"$pages\"\ndone",
+          "fonts": [
+            "/JAAAAA+Consolas",
+            "/KAAAAA+Consolas-Italic"
+          ]
+        },
+        {
+          "page": 6,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 931,
+          "blank": false,
+          "text": "Sql\n1\n2\n3\n4\n5\n6\n7\n8\nSELECT m.role,\n       COUNT(*) AS blocks,\n       MAX(LENGTH(b.text)) AS longest\nFROM messages AS m\nJOIN blocks AS b ON b.message_id = m.id\nWHERE m.exported_at >= DATE '2026-01-01'\nGROUP BY m.role\nORDER BY blocks DESC;\nJson\n1\n2\n3\n4\n5\n6\n{\n  \"name\": \"café notes\",\n  \"version\": 1,\n  \"formats\": [\"pdf\", \"docx\", \"markdown\", \"txt\", \"json\", \"html\", \"png\"],\n  \"limits\": { \"side\": 16384, \"pixels\": 16777216 }\n}\nHtml\n1\n2\n3\n4\n<section class=\"callout callout--note\">\n  <h3>Note</h3>\n  <p>Markup in the source stays text, never becomes an element.</p>\n</section>\nCss\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n.document {\n  max-width: 190mm;\n  margin: 0 auto;\n  font-family: \"Source Serif 4\", Georgia, serif;\n}\n@media print {\n  .document { break-inside: auto; }\n  thead { display: table-header-group; }\n}\nRust\n1\n2\n3\n4\n5\nfn gcd(mut a: u64, mut b: u64) -> u64 {\n    while b != 0 {\n        let remainder = a % b;\n        a = b;\n        b = remainder;",
+          "fonts": [
+            "/JAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 7,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 848,
+          "blank": false,
+          "text": "6\n7\n8\n9\n10\n11\n12\n    }\n    a\n}\nfn main() {\n    println!(\"{}\", gcd(12, 18));\n}\nGo\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\npackage main\nimport \"fmt\"\nfunc main() {\nvalues := []int{10, 20, 30}\ntotal := 0\nfor _, value := range values {\ntotal += value\n}\nfmt.Println(total)\n}\nJava\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\npublic final class ArraySum {\n    private ArraySum() {}\n    public static int total(int[] values) {\n        int sum = 0;\n        for (int value : values) {\n            sum += value;\n        }\n        return sum;\n    }\n    public static void main(String[] args) {\n        System.out.println(total(new int[] {10, 20, 30}));\n    }\n}\nTypescript\n1\n2\n3\n4\n5\ntype Block = { type: string; text?: string };\nfunction words(blocks: Block[]): number {\n  return blocks.reduce((total, block) => {\n    return total + (block.text ? block.text.split(/\\s+/).length : 0);",
+          "fonts": [
+            "/JAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 8,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 191,
+          "blank": false,
+          "text": "6\n7\n8\n9\n  }, 0);\n}\nconsole.log(words([{ type: \"paragraph\", text: \"three short words\" }]));\n5. Figures\nDIAGRAM Pipeline diagram: parse, normalise, render, export\nFigure 1: the export pipeline.",
+          "fonts": [
+            "/JAAAAA+Consolas"
+          ]
+        },
+        {
+          "page": 9,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 135,
+          "blank": false,
+          "text": "CHART Bar chart of exported pages per week\nFigure 2: a JPEG chart.\nDIAGRAM Gradient WebP artwork\nFigure 3: WebP is transcoded for Word.",
+          "fonts": []
+        },
+        {
+          "page": 10,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 610,
+          "blank": false,
+          "text": "IMAGE Transparent circular mark\nFigure 4: transparency preserved in PNG.\nIMAGE Deliberately broken image bytes\nDeliberately broken image bytes\nFigure 5: broken assets are reported, never silently dropped.\nImage not embedded: Remote image blocked by default\n6. Practice question\nQ1. Which expression is equivalent to \n𝑥2 − 1\n𝑥 − 1 for 𝑥 ≠ 1?\nA. 𝑥 − 1\nB. 𝑥 + 1\nC. 𝑥2 + 1\nD. 1\nFootnote blocks are not part of the core model; their text is still carried rather than dropped.\nA final paragraph with a very long unbroken token,\nhttps://example.com/segmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegme",
+          "fonts": [
+            "/EAAAAA+CambriaMath"
+          ]
+        },
+        {
+          "page": 11,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 403,
+          "blank": false,
+          "text": "ntsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegmentsegments\negmentsegmentsegmentsegmentsegmentsegmentsegmentsegment, to prove wrapping never widens the\npage.\nUSER\nAnd the set-builder form for a coset, 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }?\nASSISTANT\nYes — the coset is written 𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 } and the limit is lim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1.\n𝑎 + 𝐻 = { 𝑎 + ℎ: ℎ ∈ 𝐻 }\nlim\n𝑥 → 0\nsin 𝑥\n𝑥 = 1",
+          "fonts": [
+            "/EAAAAA+CambriaMath"
+          ]
+        }
+      ],
+      "blank_pages": [],
+      "text_chars": 6866
+    },
+    {
+      "path": "C:\\Users\\tejas\\Downloads\\STRIX_AI_EXPORTER_09\\STRIX_AI_Exporter\\tests\\output\\table-headers.pdf",
+      "pages": 4,
+      "fonts": [
+        "/AAAAAA+PalatinoLinotype-Bold"
+      ],
+      "page_details": [
+        {
+          "page": 1,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1074,
+          "blank": false,
+          "text": "Long table — repeated header check\nChatGPT · Artifact fixture · November 13, 2026 · 1 message\nASSISTANT\nStep-by-step table\nThe header row must repeat on every printed page. Each row is deliberately long enough to push the table\nacross a page boundary.\nStep Expression Result Note\n1 step_1(x) = x^0 + 1 value 1 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n2 step_2(x) = x^1 + 2 value 4 —\n3 step_3(x) = x^2 + 3 value 7 —\n4 step_4(x) = x^3 + 4 value 10 —\n5 step_5(x) = x^4 + 5 value 13 —\n6 step_6(x) = x^5 + 6 value 16 —\n7 step_7(x) = x^6 + 7 value 19 —\n8 step_8(x) = x^7 + 8 value 22 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n9 step_9(x) = x^8 + 9 value 25 —\n10 step_10(x) = x^0 + 10 value 28 —\n11 step_11(x) = x^1 + 11 value 31 —\n12 step_12(x) = x^2 + 12 value 34 —\n13 step_13(x) = x^3 + 13 value 37 —\n14 step_14(x) = x^4 + 14 value 40 —\n15 step_15(x) = x^5 + 15 value 43 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n16 step_16(x) = x^6 + 16 value 46 —",
+          "fonts": [
+            "/AAAAAA+PalatinoLinotype-Bold"
+          ]
+        },
+        {
+          "page": 2,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1110,
+          "blank": false,
+          "text": "Step Expression Result Note\n17 step_17(x) = x^7 + 17 value 49 —\n18 step_18(x) = x^8 + 18 value 52 —\n19 step_19(x) = x^0 + 19 value 55 —\n20 step_20(x) = x^1 + 20 value 58 —\n21 step_21(x) = x^2 + 21 value 61 —\n22 step_22(x) = x^3 + 22 value 64 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n23 step_23(x) = x^4 + 23 value 67 —\n24 step_24(x) = x^5 + 24 value 70 —\n25 step_25(x) = x^6 + 25 value 73 —\n26 step_26(x) = x^7 + 26 value 76 —\n27 step_27(x) = x^8 + 27 value 79 —\n28 step_28(x) = x^0 + 28 value 82 —\n29 step_29(x) = x^1 + 29 value 85 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n30 step_30(x) = x^2 + 30 value 88 —\n31 step_31(x) = x^3 + 31 value 91 —\n32 step_32(x) = x^4 + 32 value 94 —\n33 step_33(x) = x^5 + 33 value 97 —\n34 step_34(x) = x^6 + 34 value 100 —\n35 step_35(x) = x^7 + 35 value 103 —\n36 step_36(x) = x^8 + 36 value 106 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n37 step_37(x) = x^0 + 37 value 109 —\n38 step_38(x) = x^1 + 38 value 112 —\n39 step_39(x) = x^2 + 39 value 115 —",
+          "fonts": []
+        },
+        {
+          "page": 3,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 1127,
+          "blank": false,
+          "text": "Step Expression Result Note\n40 step_40(x) = x^3 + 40 value 118 —\n41 step_41(x) = x^4 + 41 value 121 —\n42 step_42(x) = x^5 + 42 value 124 —\n43 step_43(x) = x^6 + 43 value 127 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n44 step_44(x) = x^7 + 44 value 130 —\n45 step_45(x) = x^8 + 45 value 133 —\n46 step_46(x) = x^0 + 46 value 136 —\n47 step_47(x) = x^1 + 47 value 139 —\n48 step_48(x) = x^2 + 48 value 142 —\n49 step_49(x) = x^3 + 49 value 145 —\n50 step_50(x) = x^4 + 50 value 148 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n51 step_51(x) = x^5 + 51 value 151 —\n52 step_52(x) = x^6 + 52 value 154 —\n53 step_53(x) = x^7 + 53 value 157 —\n54 step_54(x) = x^8 + 54 value 160 —\n55 step_55(x) = x^0 + 55 value 163 —\n56 step_56(x) = x^1 + 56 value 166 —\n57 step_57(x) = x^2 + 57 value 169 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n58 step_58(x) = x^3 + 58 value 172 —\n59 step_59(x) = x^4 + 59 value 175 —\n60 step_60(x) = x^5 + 60 value 178 —\n61 step_61(x) = x^6 + 61 value 181 —\n62 step_62(x) = x^7 + 62 value 184 —",
+          "fonts": []
+        },
+        {
+          "page": 4,
+          "width_mm": 209.9,
+          "height_mm": 297,
+          "chars": 406,
+          "blank": false,
+          "text": "Step Expression Result Note\n63 step_63(x) = x^8 + 63 value 187 —\n64 step_64(x) = x^0 + 64 value 190 A note long enough to\nwrap inside its cell without\ntouching the neighbouring\ncolumn.\n65 step_65(x) = x^1 + 65 value 193 —\n66 step_66(x) = x^2 + 66 value 196 —\n67 step_67(x) = x^3 + 67 value 199 —\n68 step_68(x) = x^4 + 68 value 202 —\n69 step_69(x) = x^5 + 69 value 205 —\n70 step_70(x) = x^6 + 70 value 208 —",
+          "fonts": []
+        }
+      ],
+      "blank_pages": [],
+      "text_chars": 3717
+    }
+  ],
+  "docx": {
+    "entries": [
+      "[Content_Types].xml",
+      "_rels/.rels",
+      "docProps/core.xml",
+      "word/document.xml",
+      "word/styles.xml",
+      "word/numbering.xml",
+      "word/_rels/document.xml.rels",
+      "word/media/image1.png",
+      "word/media/image2.jpeg",
+      "word/media/image3.png",
+      "word/media/image4.png"
+    ],
+    "media": [
+      {
+        "name": "word/media/image1.png",
+        "bytes": 19588
+      },
+      {
+        "name": "word/media/image2.jpeg",
+        "bytes": 17011
+      },
+      {
+        "name": "word/media/image3.png",
+        "bytes": 51019
+      },
+      {
+        "name": "word/media/image4.png",
+        "bytes": 15701
+      }
+    ],
+    "omml": 32,
+    "tableRows": 71,
+    "stylesBytes": 8742,
+    "xml": [
+      {
+        "label": "conversation.docx",
+        "name": "[Content_Types].xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "_rels/.rels",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "docProps/core.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "word/document.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "word/styles.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "word/numbering.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "conversation.docx",
+        "name": "word/_rels/document.xml.rels",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "[Content_Types].xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "_rels/.rels",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "docProps/core.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "word/document.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "word/styles.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "word/numbering.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "word/_rels/document.xml.rels",
+        "ok": true,
+        "error": ""
+      }
+    ]
+  },
+  "png": {
+    "signature": "89504e470d0a1a0a",
+    "width": 1240,
+    "height": 10452,
+    "dpi": {
+      "x": 96,
+      "unit": 1
+    }
+  },
+  "checks": [
+    {
+      "name": "All seven formats produced a non-empty file",
+      "pass": true,
+      "detail": "7 files"
+    },
+    {
+      "name": "The test conversation validates against the document schema",
+      "pass": true,
+      "detail": "4 messages detected."
+    },
+    {
+      "name": "HTML is standalone, script-free and carries a CSP",
+      "pass": true,
+      "detail": "131.5 KB"
+    },
+    {
+      "name": "HTML carries MathML for every formula",
+      "pass": true,
+      "detail": "32 math elements for 19 formulas"
+    },
+    {
+      "name": "HTML escapes page text instead of activating it",
+      "pass": true,
+      "detail": "literal HTML remains text"
+    },
+    {
+      "name": "HTML print styles define paper, margins and repeated table headers",
+      "pass": true,
+      "detail": "A4 rule and thead repeat present"
+    },
+    {
+      "name": "The long table keeps a real header row",
+      "pass": true,
+      "detail": "HTML thead, Word tblHeader"
+    },
+    {
+      "name": "Markdown preserves TeX, including matrix alignment",
+      "pass": true,
+      "detail": "raw & and $$ blocks kept"
+    },
+    {
+      "name": "Markdown keeps nested list indentation",
+      "pass": true,
+      "detail": "children indented two spaces and numbered"
+    },
+    {
+      "name": "TXT reduces mathematics to readable words",
+      "pass": true,
+      "detail": "inline and display TeX both reduced"
+    },
+    {
+      "name": "A price beside inline maths keeps both in every format",
+      "pass": true,
+      "detail": "price stays prose, formula stays maths"
+    },
+    {
+      "name": "An escaped price and an empty formula damage nothing",
+      "pass": true,
+      "detail": "no stray backslash, no error badge for an empty formula"
+    },
+    {
+      "name": "JSON is versioned and complete",
+      "pass": true,
+      "detail": "4 messages"
+    },
+    {
+      "name": "DOCX is a valid package with every required part",
+      "pass": true,
+      "detail": "11 entries"
+    },
+    {
+      "name": "Every DOCX XML part is well-formed",
+      "pass": true,
+      "detail": "14 parts"
+    },
+    {
+      "name": "DOCX carries real OMML equations, not TeX text",
+      "pass": true,
+      "detail": "32 equations"
+    },
+    {
+      "name": "DOCX embeds every valid image and reports broken bytes",
+      "pass": true,
+      "detail": "4 media parts, broken source is a placeholder"
+    },
+    {
+      "name": "DOCX code keeps indentation and syntax colours",
+      "pass": true,
+      "detail": "spaces, keyword and number runs"
+    },
+    {
+      "name": "DOCX numbering declares all nine levels",
+      "pass": true,
+      "detail": "bullet + decimal × 9"
+    },
+    {
+      "name": "DOCX table header repeats across pages",
+      "pass": true,
+      "detail": "71 rows, one repeating header"
+    },
+    {
+      "name": "PNG has the reported dimensions and real DPI",
+      "pass": true,
+      "detail": "1240×10452 at 96 DPI"
+    },
+    {
+      "name": "PDF inspection ran",
+      "pass": true,
+      "detail": "5 files"
+    },
+    {
+      "name": "PDF keeps A4 portrait geometry",
+      "pass": true,
+      "detail": "209.9×297 mm, 10 pages"
+    },
+    {
+      "name": "PDF honours Letter landscape and narrow margins",
+      "pass": true,
+      "detail": "279.4×215.9 mm"
+    },
+    {
+      "name": "PDF honours A4 wide margins",
+      "pass": true,
+      "detail": "10 pages"
+    },
+    {
+      "name": "PDF cover option adds a title page",
+      "pass": true,
+      "detail": "11 vs 10 pages"
+    },
+    {
+      "name": "No PDF page is blank",
+      "pass": true,
+      "detail": "all pages carry text"
+    },
+    {
+      "name": "PDF embeds real fonts",
+      "pass": true,
+      "detail": "/AAAAAA+PalatinoLinotype-Bold, /DAAAAA+CambriaMath, /IAAAAA+Consolas, /JAAAAA+Consolas-Italic"
+    },
+    {
+      "name": "PDF text is searchable",
+      "pass": true,
+      "detail": "6621 extracted characters"
+    },
+    {
+      "name": "PDF repeats the table header on later pages",
+      "pass": true,
+      "detail": "4 pages contain the header"
+    },
+    {
+      "name": "PDF spans more than one page without clipping",
+      "pass": true,
+      "detail": "10, 14, 10"
+    }
+  ],
+  "failures": 0
+}

@@ -313,19 +313,25 @@ body::before {
   background: var(--charcoal);
   box-shadow: none;
 }
+/* Selected cards read as an orange outline over the dark surface, matching the
+   buttons instead of painting a solid flame block. */
 .format-button[aria-pressed="true"],
 .column-button[aria-pressed="true"] {
   border-color: var(--flame);
-  background: var(--flame);
-  color: var(--black);
+  background: var(--accent-soft);
+  color: var(--white);
   box-shadow: none;
 }
-.format-button[aria-pressed="true"] .format-name,
+.format-button[aria-pressed="true"] .format-name {
+  color: var(--white);
+}
 .format-button[aria-pressed="true"] .format-hint,
-.format-button[aria-pressed="true"] .icon,
-.column-button[aria-pressed="true"] .icon,
 .column-button[aria-pressed="true"] .format-hint {
-  color: var(--black);
+  color: var(--pale);
+}
+.format-button[aria-pressed="true"] .icon,
+.column-button[aria-pressed="true"] .icon {
+  color: var(--flame);
 }
 .column-list { gap: 3px; }
 .column-button {
@@ -360,10 +366,10 @@ body::before {
 }
 .theme-option:has(input:checked) {
   border-color: var(--flame);
-  background: var(--flame);
-  color: var(--black);
+  background: var(--accent-soft);
+  color: var(--white);
 }
-.theme-option:has(input:checked) .icon { color: var(--black); }
+.theme-option:has(input:checked) .icon { color: var(--flame); }
 
 .switch-row {
   border: 1px solid var(--line);
@@ -424,20 +430,23 @@ body::before {
   background: var(--black);
   box-shadow: none;
 }
+/* Primary actions are outlined, not filled: the flame rule marks the action and
+   the page keeps its black ground, so one solid block cannot dominate the view. */
 .primary-action {
   min-height: 48px;
   gap: 8px;
-  border: 0;
+  border: 1px solid var(--flame);
   border-radius: 0;
-  background: var(--flame);
-  color: var(--black);
+  background: transparent;
+  color: var(--flame);
   font-size: 11px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  transition: background-color var(--transition), color var(--transition);
+  transition: background-color var(--transition), color var(--transition), border-color var(--transition);
 }
-.primary-action .icon { color: var(--black); }
-.primary-action:not(:disabled):hover { background: var(--white); color: var(--black); }
+.primary-action .icon { color: var(--flame); }
+.primary-action:not(:disabled):hover { border-color: var(--flame); background: var(--accent-soft); color: var(--white); }
+.primary-action:not(:disabled):hover .icon { color: var(--flame); }
 .primary-action:disabled { opacity: 0.45; }
 .footer-note { margin-top: 8px; color: var(--grey); font-size: 8.5px; line-height: 1.45; }
 
@@ -523,13 +532,14 @@ body::before {
 
 .footer-actions { gap: 4px; }
 .btn--primary {
-  border: 0;
-  background: var(--flame);
-  color: var(--black);
+  border: 1px solid var(--flame);
+  background: transparent;
+  color: var(--flame);
   box-shadow: none;
 }
-.btn--primary:not(:disabled):hover { background: var(--white); color: var(--black); filter: none; }
-.btn--primary .icon { color: var(--black); }
+.btn--primary:not(:disabled):hover { border-color: var(--flame); background: var(--accent-soft); color: var(--white); filter: none; }
+.btn--primary .icon { color: var(--flame); }
+.btn--primary:not(:disabled):hover .icon { color: var(--flame); }
 .btn--secondary { background: var(--charcoal); border-color: var(--line); color: var(--pale); }
 .btn--secondary:not(:disabled):hover { background: var(--surface-3); border-color: var(--flame); }
 .btn--compact { min-height: 31px; font-size: 9px; }

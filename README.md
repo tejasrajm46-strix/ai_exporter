@@ -11,14 +11,18 @@
 
 <p align="center">
   <img alt="Manifest V3" src="https://img.shields.io/badge/manifest-v3-FF5100?style=flat-square&labelColor=000000">
-  <img alt="Version 0.9.0" src="https://img.shields.io/badge/version-0.9.0-FF5100?style=flat-square&labelColor=000000">
+  <img alt="Version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-FF5100?style=flat-square&labelColor=000000">
   <img alt="Local by default" src="https://img.shields.io/badge/local-by%20default-FF5100?style=flat-square&labelColor=000000">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-FF5100?style=flat-square&labelColor=000000">
 </p>
 
 <p align="center">
-  <img src="./assets/workflow.gif" width="100%" alt="Picking Word as the format, switching the document to dark and exporting from the preview workspace.">
+  <video src="https://github.com/tejasrajm46-strix/ai_exporter/raw/main/assets/AI_EXPORTER_INTRO.mp4" width="100%" controls muted playsinline poster="./assets/screenshots/studio.png">
+    Picking Word as the format, switching the document to dark and exporting from the preview workspace.
+  </video>
 </p>
+
+<p align="center"><sub>60-second walkthrough of the export workspace (mp4, no audio).</sub></p>
 
 ---
 

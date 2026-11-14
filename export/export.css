@@ -927,7 +927,12 @@ a { color: var(--violet); }
 }
 @keyframes modal-in { from { transform: translateY(6px) scale(.99); opacity: 0 } to { transform: none; opacity: 1 } }
 
+.modal-state { position: relative; }
 .modal-state[hidden] { display: none; }
+/* The completion notification is dismissible by hand as well as by itself. The
+   control is the studio's existing icon button; only its corner placement is
+   new, so there is no second button style to keep in sync with the theme. */
+.modal-x { position: absolute; top: -6px; right: -6px; z-index: 1; }
 .modal-state h2 { margin: 0 0 5px; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
 .modal-state > p { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--muted); }
 
@@ -956,6 +961,13 @@ a { color: var(--violet); }
 }
 .stage-list li.is-active { color: var(--text); font-weight: 600; }
 .stage-list li.is-active::before { border-color: var(--text); border-top-color: transparent; animation: spin .7s linear infinite; }
+.stage-list li.is-cancelled { color: var(--danger); }
+.stage-list li.is-cancelled::before {
+  content: "\00d7";
+  display: flex; align-items: center; justify-content: center;
+  border-color: var(--danger); background: var(--danger-soft, #fdecec); color: var(--danger);
+  font-size: 10px; font-weight: 700;
+}
 .stage-list li.is-done { color: var(--ok); }
 .stage-list li.is-done::before {
   content: "✓";

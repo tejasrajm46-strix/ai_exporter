@@ -37,8 +37,18 @@ function sanitizeBlocks(blocks) {
       case "paragraph":
       case "quote":
         return { type: block.type, text: text(block.text, 400000) };
-      case "list":
-        return { type: "list", ordered: Boolean(block.ordered), items: stringList(block.items, 300, 400000) };
+      case "list": {
+        const list = { type: "list", ordered: Boolean(block.ordered), items: stringList(block.items, 300, 400000) };
+        // Nesting is part of the document: carry it through the handoff or the
+        // export tab receives a flat list.
+        if (Array.isArray(block.depths) && block.depths.length === list.items.length) {
+          list.depths = block.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)));
+        }
+        if (Array.isArray(block.orders) && block.orders.length === list.items.length) {
+          list.orders = block.orders.map((ordered) => Boolean(ordered));
+        }
+        return list;
+      }
       case "code":
         return { type: "code", language: text(block.language, 40), code: text(block.code, 400000), output: Boolean(block.output) };
       case "table":

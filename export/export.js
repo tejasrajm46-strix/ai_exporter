@@ -111,6 +111,7 @@
     modalErrorMessage: byId("modal-error-message"),
     modalInfoMessage: byId("modal-info-message"),
     modalOpenFolder: byId("modal-open-folder"),
+    cancelProgress: byId("modal-cancel"),
     empty: byId("empty")
   };
 
@@ -164,6 +165,9 @@
   let renderedRevision = -1;
   let loadedRevision = -1;
   let busy = false;
+  /* Cancellation is cooperative: the build itself cannot be interrupted, so the
+     token is checked at every stage boundary and before anything is downloaded. */
+  let cancelRequested = false;
   let noSelectionNotice = false;
   let auditNotice = "";
   let imageUrl = null;
@@ -463,7 +467,6 @@
     ui.stageNote.textContent = note;
     ui.stageNote.hidden = !note;
 
-    ui.primaryLabel.textContent = PRIMARY_LABELS[selectedFormat] || "Export";
     ui.primaryLabel.textContent = selectedFormat === "pdf" ? "Print / Save as PDF" : (PRIMARY_LABELS[selectedFormat] || "Export");
     ui.primary.title = selectedFormat === "pdf"
       ? "Print the current selection to PDF. Choose 'Save as PDF' in the browser print dialog."
@@ -481,7 +484,9 @@
     setControlDisabled(ui.remoteToggle, !settings.remoteImages, "This format never loads remote images.");
     setControlDisabled(ui.filenameInput, !settings.filename, "The print dialog chooses the PDF file name.");
     setControlDisabled(ui.includeImages, !settings.images, "This format cannot carry images.");
-    setControlDisabled(ui.includeDiagrams, true, "All conversation images are included by default.");
+    /* The model has always supported diagrams as their own switch; leaving the
+       control permanently disabled made that promise unreachable. */
+    setControlDisabled(ui.includeDiagrams, !settings.diagrams, "This format cannot carry diagrams.");
     setControlDisabled(ui.keepImagePositions, !settings.positions, "This format flows images with the text.");
     setControlDisabled(ui.includeCaptions, !settings.captions, "This format has no captions.");
     setControlDisabled(ui.includeImageSources, !settings.sources, "This format has no image sources.");
@@ -542,7 +547,7 @@
     ui.countDiagrams.textContent = String(counts.diagram);
     ui.countCharts.textContent = String(counts.chart);
     ui.scopeVisuals.textContent = `${counts.total} visual${counts.total === 1 ? "" : "s"}`;
-    ui.visualSummary.textContent = `${reportVisualSummary(counts.total)} available · included by default`;
+    ui.visualSummary.textContent = `${reportVisualSummary(counts.total)} available \u00b7 ${options.includeImages === false ? "images off" : options.includeDiagrams === false ? "diagrams off" : "included"}`;
     ui.scopeCount.textContent = String(included.size);
     ui.appScope.textContent = `${included.size} message${included.size === 1 ? "" : "s"}`;
 
@@ -768,6 +773,29 @@
     }
   }
 
+  /* Mathematics cannot wrap, and hiding an over-wide equation behind a
+     scrollbar is what put scrollbar arrows beside the maths in the first place
+     (see .math in utils/exporter.js). The document itself no longer scrolls, so
+     an equation wider than the text column is narrowed to the column here,
+     down to a floor that stays legible. It is a preview/print pass: the saved
+     .html keeps its natural size, because it has no script to run. */
+  const MATH_FIT_FLOOR = 0.72;
+  function fitDisplayMath() {
+    const doc = ui.preview.contentDocument;
+    if (!doc) return;
+    for (const block of doc.querySelectorAll(".math")) {
+      block.style.fontSize = ""; // measure the unscaled equation on every pass
+      const math = block.firstElementChild;
+      if (!math || math.tagName.toLowerCase() !== "math") continue;
+      const available = block.clientWidth;
+      const needed = (math.firstElementChild || math).getBoundingClientRect().width;
+      if (!available || needed <= available) continue;
+      const size = parseFloat(doc.defaultView.getComputedStyle(block).fontSize) || 0;
+      const scale = Math.max(MATH_FIT_FLOOR, available / needed);
+      if (size && scale < 1) block.style.fontSize = `${size * scale}px`;
+    }
+  }
+
   /**
    * Copy buttons live in the preview chrome only. The generated file stays a
    * static document with no script, so what you download is what the preview
@@ -819,6 +847,7 @@
     // Ignore a load event from a document superseded by a newer srcdoc.
     const marker = ui.preview.contentDocument && ui.preview.contentDocument.querySelector('meta[name="export-revision"]');
     if (marker && Number(marker.content) === renderedRevision) loadedRevision = renderedRevision;
+    fitDisplayMath();
     decorateCodePanels();
     applyScale();
     watchPreviewLayout();
@@ -1202,6 +1231,13 @@
     return entry;
   }
 
+  /** Chrome reports an absolute path; the notification names the file, not the
+      sandbox path. Backslashes and slashes both appear across platforms. */
+  function baseNameOf(value) {
+    const parts = String(value || "").split(/[\\/]/);
+    return parts[parts.length - 1] || "";
+  }
+
   if (chrome.downloads && chrome.downloads.onChanged) {
     chrome.downloads.onChanged.addListener((delta) => {
       if (!delta || !delta.state) return;
@@ -1213,21 +1249,55 @@
       if (!entry || delta.id !== latestDownloadId) return;
       latestDownloadId = null;
       if (state === "complete") {
-        setStatus(
-          `Export complete: ${entry.filename}.${auditNotice ? ` Note: ${auditNotice}` : ""}`,
-          "ok",
-          chrome.downloads && typeof chrome.downloads.showDefaultFolder === "function"
-            ? { label: "Show folder", run: () => chrome.downloads.showDefaultFolder() }
-            : null
-        );
+        /* Success is reported only after Chrome confirms the file exists. The
+           search result carries the name actually used after "uniquify", which
+           is the only file name that can honestly be shown. */
+        const finish = (savedName) => {
+          const name = savedName || entry.filename;
+          hideModal();
+          showSuccess({
+            filename: name,
+            size: entry.size,
+            format: entry.format,
+            pages: entry.pages,
+            visuals: entry.visuals,
+            warnings: entry.warnings
+          });
+          setStatus(
+            `Export complete: ${name}.${auditNotice ? ` Note: ${auditNotice}` : ""}`,
+            "ok",
+            chrome.downloads && typeof chrome.downloads.showDefaultFolder === "function"
+              ? { label: "Show folder", run: () => chrome.downloads.showDefaultFolder() }
+              : null
+          );
+        };
+        if (chrome.downloads && typeof chrome.downloads.search === "function") {
+          let answered = false;
+          try {
+            chrome.downloads.search({ id: delta.id }, (items) => {
+              if (answered) return;
+              answered = true;
+              // Reading lastError here keeps a missing item from surfacing as an
+              // unchecked runtime error; the queued name is the fallback.
+              void chrome.runtime.lastError;
+              const item = Array.isArray(items) ? items.find((candidate) => candidate && candidate.id === delta.id) : null;
+              finish(item && item.filename ? baseNameOf(item.filename) : entry.filename);
+            });
+          } catch {
+            finish(entry.filename);
+          }
+        } else {
+          finish(entry.filename);
+        }
       } else {
+        hideModal();
         showError(`Download interrupted: ${entry.filename}. Your selection and settings are unchanged.`, entry.format);
         setStatus(`Download interrupted: ${entry.filename}.`, "error", { label: "Try again", run: () => runExport() });
       }
     });
   }
 
-  function saveBlob(blob, filename, format) {
+  function saveBlob(blob, filename, format, details = {}) {
     const url = URL.createObjectURL(blob);
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -1252,10 +1322,15 @@
               return;
             }
             settled = true;
+            latestDownloadId = downloadId;
             pendingDownloads.set(downloadId, {
               url,
               filename,
               format,
+              size: details.size || blob.size,
+              pages: details.pages || 0,
+              visuals: details.visuals || 0,
+              warnings: details.warnings || [],
               timer: setTimeout(() => releaseDownload(downloadId), 600000)
             });
             resolve({ filename, downloadId });
@@ -1276,17 +1351,78 @@
     info: ui.modalInfo
   });
 
+  /* The completion notification is the one state that clears itself: a file
+     that already downloaded needs no acknowledgement, and leaving the card up
+     asks the reader to dismiss something that has finished. Any interaction
+     with the card cancels the timer, so it never vanishes mid-read. */
+  const SUCCESS_DISMISS_MS = 7000;
+  let successTimer = null;
+
+  function clearSuccessTimer() {
+    if (successTimer === null) return;
+    clearTimeout(successTimer);
+    successTimer = null;
+  }
+
   function showModal(state) {
+    // One notification at a time: a new state retires the previous timer. An
+    // export still in progress is never dismissed - only its own completion is.
+    clearSuccessTimer();
     for (const [name, node] of Object.entries(MODAL_STATES())) node.hidden = name !== state;
     ui.modalScrim.hidden = false;
   }
 
   function hideModal() {
+    clearSuccessTimer();
     ui.modalScrim.hidden = true;
   }
 
   function resetStages() {
     for (const item of ui.progressStages.children) item.className = "";
+  }
+
+  /** Thrown only when the reader asked to stop; it is not an export failure. */
+  class ExportCancelled extends Error {
+    constructor() {
+      super("Export cancelled.");
+      this.name = "ExportCancelled";
+    }
+  }
+
+  function ensureActive() {
+    if (cancelRequested) throw new ExportCancelled();
+  }
+
+  function requestCancel() {
+    if (!busy || cancelRequested) return;
+    cancelRequested = true;
+    ui.cancelProgress.disabled = true;
+    ui.cancelProgress.textContent = "Cancelling...";
+    setStatus("Cancelling at the next completed stage...", "busy");
+    // A download that was already accepted can still be withdrawn.
+    if (latestDownloadId !== null && chrome.downloads && typeof chrome.downloads.cancel === "function") {
+      try {
+        chrome.downloads.cancel(latestDownloadId, () => void chrome.runtime.lastError);
+      } catch {
+        // The file already finished; the completion event reports it instead.
+      }
+    }
+  }
+
+  function cancelOrClose() {
+    if (busy) requestCancel();
+    else if (!ui.modalProgress.hidden) hideModal();
+  }
+
+  function reportCancelled(stage) {
+    // The progress card stays up long enough to show where the work stopped;
+    // its only remaining action is to close it.
+    if (typeof stage === "number") markStage(stage, "cancelled");
+    ui.cancelProgress.textContent = "Close";
+    ui.cancelProgress.disabled = false;
+    const title = ui.modalProgress.querySelector("h2");
+    if (title) title.textContent = "Export cancelled";
+    setStatus("Export cancelled. Nothing was downloaded; your selection and settings are unchanged.", "warn");
   }
 
   function markStage(index, state) {
@@ -1298,6 +1434,10 @@
 
   function showProgress() {
     resetStages();
+    const title = ui.modalProgress.querySelector("h2");
+    if (title) title.textContent = "Exporting document...";
+    ui.cancelProgress.textContent = "Cancel export";
+    ui.cancelProgress.disabled = false;
     showModal("progress");
   }
 
@@ -1323,6 +1463,11 @@
     }
     ui.modalOpenFolder.hidden = !(chrome.downloads && typeof chrome.downloads.showDefaultFolder === "function");
     showModal("success");
+    successTimer = setTimeout(() => {
+      successTimer = null;
+      // A success that has already been replaced must not close its successor.
+      if (!ui.modalSuccess.hidden) hideModal();
+    }, SUCCESS_DISMISS_MS);
   }
 
   function showError(message, format = selectedFormat) {
@@ -1357,27 +1502,36 @@
   async function exportPdf() {
     if (!chat || !included.size || busy) return;
     lastAttempt = "pdf";
+    cancelRequested = false;
     setExportBusy(true);
     setStatus("Preparing the current selection for printing...", "busy");
     showProgress();
+    let stage = 0;
     try {
       markStage(0, "active");
       await nextFrame();
+      ensureActive();
       markStage(0, "done");
 
+      stage = 1;
       markStage(1, "active");
       const report = imageReport();
       await nextFrame();
+      ensureActive();
       markStage(1, "done");
 
+      stage = 2;
       markStage(2, "active");
       renderDocument(true);
       const ready = await waitForRender();
+      ensureActive();
       if (!ready) throw new Error("The document preview did not finish rendering. Retry the export, or open the document in a tab.");
       markStage(2, "done");
 
+      stage = 3;
       markStage(3, "active");
       await nextFrame();
+      ensureActive();
       const doc = ui.preview.contentDocument;
       if (!doc || !doc.body || !String(doc.body.textContent || "").trim()) {
         throw new Error("The rendered document is empty, so it was not sent to the print dialog.");
@@ -1385,6 +1539,9 @@
       /* MathML is static, but the text faces still load asynchronously. Printing
          before they settle can reflow the page under the dialog. */
       if (doc.fonts && doc.fonts.ready) await doc.fonts.ready.catch(() => {});
+      ensureActive();
+      // The faces have settled, so the column can be measured for real.
+      fitDisplayMath();
       const unrenderedMath = doc.querySelectorAll("[data-tex-error]").length;
       const mathWarning = unrenderedMath
         ? ` ${unrenderedMath} mathematical expression${unrenderedMath === 1 ? "" : "s"} could not be rendered; the original source is shown in the document.`
@@ -1410,9 +1567,13 @@
         "The print dialog chooses the final file name and page count. If it did not appear, open the document in a tab and print from there."
       );
     } catch (error) {
-      const message = error && error.message ? error.message : "The PDF export failed.";
-      showError(message, "pdf");
-      setStatus(message, "error", { label: "Open in tab", run: openDocument });
+      if (error && error.name === "ExportCancelled") {
+        reportCancelled(stage);
+      } else {
+        const message = error && error.message ? error.message : "The PDF export failed.";
+        showError(message, "pdf");
+        setStatus(message, "error", { label: "Open in tab", run: openDocument });
+      }
     } finally {
       setExportBusy(false);
     }
@@ -1423,49 +1584,79 @@
   async function performExport(format) {
     if (!chat || !included.size || busy) return;
     lastAttempt = format;
+    cancelRequested = false;
     latestDownloadId = null; // an older completion must not replace this status
     setExportBusy(true);
     setStatus(`Building ${FORMATS[format] ? FORMATS[format].label : format}...`, "busy");
     showProgress();
+    let stage = 0;
     let report = { included: 0, message: "" };
     let warnings = [];
     try {
       markStage(0, "active");
       await nextFrame();
+      ensureActive();
       markStage(0, "done");
 
+      stage = 1;
       markStage(1, "active");
       const live = formatOptions(format);
       report = exporter.analyzeImages(exportChat(), live, format);
       await nextFrame();
+      ensureActive();
       markStage(1, "done");
 
+      stage = 2;
       markStage(2, "active");
       await nextFrame();
+      ensureActive();
       const result = await exporter.build(exportChat(), format, live);
+      ensureActive();
       warnings = result.warnings || [];
       const blob = result.blob || new Blob([result.text], { type: `${result.mime};charset=utf-8` });
       if (!blob || !blob.size) throw new Error("The generated file was empty, so it was not downloaded.");
       markStage(2, "done");
 
+      stage = 3;
       markStage(3, "active");
       await nextFrame();
-      const saved = await saveBlob(blob, result.filename, format);
+      ensureActive();
+      const pages = formatView(format).pane === "document" ? estimatePages() : 0;
+      const details = { size: blob.size, pages, visuals: report.included, warnings };
+      const saved = await saveBlob(blob, result.filename, format, details);
+      if (cancelRequested) {
+        // The reader cancelled while the download was being handed over.
+        if (chrome.downloads && typeof chrome.downloads.cancel === "function") {
+          try {
+            chrome.downloads.cancel(saved.downloadId, () => void chrome.runtime.lastError);
+          } catch {
+            // Already complete; nothing left to withdraw.
+          }
+        }
+        releaseDownload(saved.downloadId);
+        latestDownloadId = null;
+        throw new ExportCancelled();
+      }
       markStage(3, "done");
-      latestDownloadId = saved.downloadId;
       persistSettings();
 
-      const pages = formatView(format).pane === "document" ? estimatePages() : 0;
-      showSuccess({ filename: result.filename, size: blob.size, format, pages, visuals: report.included, warnings });
+      /* The progress card closes when the browser accepts the file; the
+         success card appears only once Chrome reports it complete. Claiming
+         success at this point would be a guess about the download state. */
+      hideModal();
       const notes = [auditNotice, report.message, warnings.length ? `${warnings.length} visual(s) could not be fetched; see details.` : ""].filter(Boolean).join(" ");
-      setStatus(`Download started: ${saved.filename}. ${notes}`.trim(), warnings.length ? "warn" : "busy");
+      setStatus(`Download started: ${saved.filename}.${notes ? ` ${notes}` : ""}`, warnings.length ? "warn" : "busy");
     } catch (error) {
-      const message = error && error.message ? error.message : "Export failed.";
-      const retry = format === "image"
-        ? { label: "Switch to PDF", run: () => chooseFormat("pdf") }
-        : { label: "Try again", run: () => performExport(format) };
-      showError(message, format);
-      setStatus(message, "error", retry);
+      if (error && error.name === "ExportCancelled") {
+        reportCancelled(stage);
+      } else {
+        const message = error && error.message ? error.message : "Export failed.";
+        const retry = format === "image"
+          ? { label: "Switch to PDF", run: () => chooseFormat("pdf") }
+          : { label: "Try again", run: () => performExport(format) };
+        showError(message, format);
+        setStatus(message, "error", retry);
+      }
     } finally {
       setExportBusy(false);
     }
@@ -1672,8 +1863,15 @@
       retryExport();
     });
     byId("modal-close").addEventListener("click", hideModal);
+    byId("modal-success-close").addEventListener("click", hideModal);
+    /* Reading or operating the notification cancels its dismissal: the timer
+       only runs while the card is untouched. */
+    for (const type of ["pointerenter", "pointerdown", "focusin", "keydown"]) {
+      ui.modalSuccess.addEventListener(type, clearSuccessTimer);
+    }
     byId("modal-info-close").addEventListener("click", hideModal);
     byId("modal-info-tab").addEventListener("click", openDocument);
+    ui.cancelProgress.addEventListener("click", cancelOrClose);
 
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
@@ -1681,7 +1879,10 @@
         closeDrawer();
         return;
       }
-      if (!ui.modalScrim.hidden && ui.modalProgress.hidden) hideModal();
+      if (ui.modalScrim.hidden) return;
+      // Escape stops an in-flight build; once it has stopped, it closes the card.
+      if (!ui.modalProgress.hidden) cancelOrClose();
+      else hideModal();
     });
   }
 

@@ -89,8 +89,70 @@
     state.toast.timer = setTimeout(() => state.toast.classList.remove("aix-toast--visible"), 4000);
   }
 
+  /* --------------------------------------------------------------- whole thread */
+
+  /* Long conversations are virtualised: the site keeps only the turns around
+     the viewport in the document, so "every message on the page" was really
+     the two on screen. Walking the thread mounts the older turns, each step is
+     parsed and merged, and the reader's position is put back afterwards. */
+  const THREAD_STEPS = 60;
+  const THREAD_SETTLE_MS = 180;
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /** The element that actually scrolls the conversation, if it is not the page. */
+  function scrollerFor(element) {
+    for (let node = element && element.parentElement; node; node = node.parentElement) {
+      const overflow = getComputedStyle(node).overflowY;
+      if (/(auto|scroll|overlay)/.test(overflow) && node.scrollHeight > node.clientHeight + 40) return node;
+    }
+    const page = document.scrollingElement;
+    return page && page.scrollHeight > page.clientHeight + 40 ? page : null;
+  }
+
+  async function collectThread() {
+    const entries = parser.findMessages(document, location);
+    if (!entries.length) return entries;
+    const scroller = scrollerFor(entries[entries.length - 1].element);
+    if (!scroller) return entries;
+
+    const original = scroller.scrollTop;
+    const distance = Math.max(160, Math.round(scroller.clientHeight * 0.85));
+    const read = (at) => parser.mergeEntries(entries, parser.findMessages(document, location), at);
+
+    if (original > 0) {
+      /* The reader is at the bottom, so the turns that have not been read are
+         above: each batch is older than everything collected so far. */
+      for (let step = 0; step < THREAD_STEPS; step += 1) {
+        const before = entries.length;
+        scroller.scrollTop = Math.max(0, scroller.scrollTop - distance);
+        await wait(THREAD_SETTLE_MS);
+        read("start");
+        if (scroller.scrollTop <= 0 && entries.length === before) break;
+      }
+    } else {
+      // Already at the top: the newer turns are the ones that are not mounted.
+      for (let step = 0; step < THREAD_STEPS; step += 1) {
+        const before = entries.length;
+        scroller.scrollTop = Math.min(scroller.scrollHeight, scroller.scrollTop + distance);
+        await wait(THREAD_SETTLE_MS);
+        read("end");
+        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+        if (atBottom && entries.length === before) break;
+      }
+    }
+
+    scroller.scrollTop = original;
+    return entries;
+  }
+
   async function openExport(format, ids, view = "") {
-    const chat = parser.parsePage(document, location, ids ? { only: ids } : undefined);
+    /* A whole-conversation export reads the thread as far as it can be
+       mounted; a selection already names its own messages. */
+    const collected = ids ? null : await collectThread();
+    const chat = collected && collected.length
+      ? parser.chatFrom(collected, document, location)
+      : parser.parsePage(document, location, ids ? { only: ids } : undefined);
     const unreadable = chat.coverage && chat.coverage.unreadable ? chat.coverage.unreadable : 0;
     if (!chat.messages.length) {
       showToast("Could not detect chat on this page. Please refresh and try again.", true);

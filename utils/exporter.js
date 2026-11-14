@@ -16,7 +16,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.9.0";
+  const VERSION = "1.0.0";
 
   /* ------------------------------------------------------------------ basics */
 
@@ -29,15 +29,58 @@
       .replace(/'/g, "&#39;");
   }
 
+  /* Remove the emphasis markers this module itself adds, and nothing else. A
+     blanket replace of every asterisk turned "2 * 3 * 4" into "2  3  4"; only a
+     balanced pair is markup. */
+  function stripInlineMarkers(text) {
+    return String(text)
+      .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+      .replace(/`([^`\n]+)`/g, "$1")
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,:;!?]|$)/g, "$1$2")
+      // An escaped dollar is a literal one; the backslash is the escape, not text.
+      .replace(/\\\$/g, "$");
+  }
+
+  /* Plain-text surfaces (TXT, PNG) cannot typeset TeX. Every inline run is
+     routed through texToPlain so prose such as "starting from $\frac{a}{b}$"
+     reads "starting from a/b" instead of leaking a backslash command. */
+  /* One inline-maths token, shared by HTML, TXT, PNG and Markdown so the four
+     cannot disagree about where arithmetic starts and stops. The `$...$` branch
+     follows Pandoc's rule - a formula opens on a non-space and closes on one.
+     Without the closing rule, "costs $5 for $x$ units" matched "$5 for $" as
+     maths: the currency was swallowed by the formula and the real expression
+     came out as a dangling "x$". The trailing `(?![0-9])` still keeps
+     "$5 and $10" prose. */
+  const INLINE_MATH_SOURCE =
+    "\\$\\$[\\s\\S]+?\\$\\$|\\\\\\[[\\s\\S]+?\\\\\\]|\\\\\\([\\s\\S]+?\\\\\\)" +
+    "|\\$\\\\{1,2}[A-Za-z][\\s\\S]*?\\$|\\$(?=\\S)[^$\\n]*?\\S\\$(?![0-9])";
+  const INLINE_MATH_PATTERN = new RegExp(`(${INLINE_MATH_SOURCE})`, "g");
+
+  /* An escaped dollar is a literal price, but it must not reach the maths
+     pattern at all: in "\\$5 and \\$10" the first delimiter paired with the
+     second one's closing sign and ate the sentence. It travels as a private
+     sentinel and is restored after the prose is formatted. */
+  const ESCAPED_DOLLAR = "\uE000";
+  function hideEscapedDollars(text) {
+    return String(text == null ? "" : text).replace(/\\\$/g, ESCAPED_DOLLAR);
+  }
+  function restoreEscapedDollars(text) {
+    return String(text).replace(/\uE000/g, "$");
+  }
+
   function plainInline(text) {
-    return joinMathLines(String(text == null ? "" : text))
-      .replace(/\\\[([\s\S]+?)\\\]/g, "$1")
-      .replace(/\\\(([\s\S]+?)\\\)/g, "$1")
-      .replace(/\$\$([\s\S]+?)\$\$/g, "$1")
-      .replace(/\*\*/g, "")
-      .replace(/`/g, "")
-      .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1$2")
-      .replace(/\$([^$\n]+)\$/g, "$1");
+    const source = hideEscapedDollars(joinMathLines(String(text == null ? "" : text)));
+    const pattern = INLINE_MATH_PATTERN;
+    pattern.lastIndex = 0;
+    let out = "";
+    let last = 0;
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+      out += stripInlineMarkers(source.slice(last, match.index));
+      out += texToPlain(match[0]);
+      last = match.index + match[0].length;
+    }
+    return restoreEscapedDollars(out + stripInlineMarkers(source.slice(last)));
   }
 
   /* A wrapped formula is folded by the MCQ layer (utils/mcq.js) before blocks
@@ -56,7 +99,9 @@
   }
 
   function formatPlain(part) {
-    let out = escapeHtml(part);
+    // "\$" is how a page escapes a literal price; the backslash is syntax and
+    // printed as a stray character in the PDF, Word and HTML exports.
+    let out = escapeHtml(String(part == null ? "" : part).replace(/\\\$/g, "$"));
     out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     out = out.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,:;!?]|$)/g, "$1<em>$2</em>");
     out = out.replace(/`([^`]+)`/g, '<code class="inline">$1</code>');
@@ -68,8 +113,8 @@
        TeX source must reach the compiler with its < and & characters intact.
        Accept every delimiter the sites produce, not only $...$, so a pasted
        \( ... \) cannot fall through as raw backslashes. */
-    const source = joinMathLines(String(text == null ? "" : text));
-    const pattern = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+\$)/g;
+    const source = hideEscapedDollars(joinMathLines(String(text == null ? "" : text)));
+    const pattern = new RegExp(`(${INLINE_MATH_SOURCE})`, "g");
     let out = "";
     let last = 0;
     let match;
@@ -82,6 +127,12 @@
       else if (token.startsWith("\\[")) { tex = token.slice(2, -2); display = true; }
       else if (token.startsWith("\\(")) { tex = token.slice(2, -2); }
       else tex = token.slice(1, -1);
+      /* "$$ $$" carries no expression. Marking it as a maths failure put a
+         visible error badge in the document for nothing at all. */
+      if (!tex.trim()) {
+        last = match.index + token.length;
+        continue;
+      }
       const mathml = texToMathML(tex, display);
       out += mathml
         ? `<span class="${display ? "math math-display" : "math-inline"}">${mathml}</span>`
@@ -89,7 +140,7 @@
       last = match.index + token.length;
     }
     out += formatPlain(source.slice(last));
-    return out;
+    return restoreEscapedDollars(out);
   }
 
   function formatDate(iso, withTime) {
@@ -168,25 +219,40 @@
     return new RegExp(`(${comment})|${TOKEN_TAIL}`, "g");
   }
 
-  function highlight(code, language) {
+  /* The tokenizer is shared with the Word generator, so a colour code block in
+     a .docx and the same block in the PDF use one notion of comment, string,
+     number, keyword, call and type. Returns [{ text, kind }] with kind null for
+     ordinary source text. */
+  function highlightTokens(code, language) {
     const words = keywordSet(language);
     const tokens = tokenPatternFor(language);
-    let out = "";
+    const source = String(code == null ? "" : code);
+    const out = [];
     let last = 0;
     let match;
-    while ((match = tokens.exec(code)) !== null) {
-      out += escapeHtml(code.slice(last, match.index));
+    while ((match = tokens.exec(source)) !== null) {
+      if (match.index > last) out.push({ text: source.slice(last, match.index), kind: null });
       const raw = match[0];
-      if (match[1]) out += `<span class="tok-com">${escapeHtml(raw)}</span>`;
-      else if (match[2]) out += `<span class="tok-str">${escapeHtml(raw)}</span>`;
-      else if (match[3]) out += `<span class="tok-num">${escapeHtml(raw)}</span>`;
-      else if (words.has(raw)) out += `<span class="tok-kw">${escapeHtml(raw)}</span>`;
-      else if (code[match.index + raw.length] === "(") out += `<span class="tok-fn">${escapeHtml(raw)}</span>`;
-      else if (/^[A-Z]/.test(raw)) out += `<span class="tok-type">${escapeHtml(raw)}</span>`;
-      else out += escapeHtml(raw);
+      let kind = null;
+      if (match[1]) kind = "com";
+      else if (match[2]) kind = "str";
+      else if (match[3]) kind = "num";
+      else if (words.has(raw)) kind = "kw";
+      else if (source[match.index + raw.length] === "(") kind = "fn";
+      else if (/^[A-Z]/.test(raw)) kind = "type";
+      out.push({ text: raw, kind });
       last = match.index + raw.length;
     }
-    return out + escapeHtml(code.slice(last));
+    if (last < source.length) out.push({ text: source.slice(last), kind: null });
+    return out;
+  }
+
+  function highlight(code, language) {
+    return highlightTokens(code, language)
+      .map((token) => token.kind
+        ? `<span class="tok-${token.kind}">${escapeHtml(token.text)}</span>`
+        : escapeHtml(token.text))
+      .join("");
   }
 
   /* -------------------------------------------------------------- math (TeX) */
@@ -207,7 +273,8 @@
     times: "\u00d7", div: "\u00f7", pm: "\u00b1", mp: "\u2213", cdot: "\u22c5",
     ast: "\u2217", star: "\u22c6", circ: "\u2218", bullet: "\u2022", oplus: "\u2295",
     ominus: "\u2296", otimes: "\u2297", oslash: "\u2298", cap: "\u2229", cup: "\u222a",
-    uplus: "\u2294", sqcap: "\u2293", sqcup: "\u2294", vee: "\u2228", wedge: "\u2227",
+    /* uplus is the multiset sum \u228e, not the square cup \u2294. */
+    uplus: "\u228e", sqcap: "\u2293", sqcup: "\u2294", vee: "\u2228", wedge: "\u2227",
     setminus: "\u2216", smallsetminus: "\u2216", rightarrow: "\u2192", to: "\u2192",
     gets: "\u2190", leftarrow: "\u2190", leftrightarrow: "\u2194", Rightarrow: "\u21d2",
     Leftarrow: "\u21d0", Leftrightarrow: "\u21d4", implies: "\u21d2", iff: "\u21d4",
@@ -227,7 +294,13 @@
     Theta: "\u0398", Lambda: "\u039b", Xi: "\u039e", Pi: "\u03a0", Sigma: "\u03a3",
     Upsilon: "\u03a5", Phi: "\u03a6", Psi: "\u03a8", Omega: "\u03a9",
     lbrace: "{", rbrace: "}", langle: "\u27e8", rangle: "\u27e9", vert: "|",
-    Vert: "\u2016", lvert: "|", rvert: "|", lVert: "\u2016", rVert: "\u2016"
+    Vert: "\u2016", lvert: "|", rvert: "|", lVert: "\u2016", rVert: "\u2016",
+    /* Fences: without these the names printed as words, so a floor read
+       "lfloor 100/5 rfloor" instead of \u230a100/5\u230b. */
+    lfloor: "\u230a", rfloor: "\u230b", lceil: "\u2308", rceil: "\u2309",
+    lgroup: "\u27ee", rgroup: "\u27ef", lmoustache: "\u23b0", rmoustache: "\u23b1",
+    ulcorner: "\u231c", urcorner: "\u231d", llcorner: "\u231e", lrcorner: "\u231f",
+    lAngle: "\u27ea", rAngle: "\u27eb"
   };
 
   const TEX_BIGOPS = {
@@ -238,7 +311,7 @@
     "lim", "min", "max", "sup", "inf", "limsup", "liminf"]);
   const TEX_FUNCS = new Set(["sin", "cos", "tan", "cot", "sec", "csc", "arcsin", "arccos",
     "arctan", "sinh", "cosh", "tanh", "log", "ln", "lg", "exp", "det", "dim", "ker", "deg",
-    "gcd", "hom", "arg", "mod", "bmod", "lim", "min", "max", "sup", "inf"]);
+    "gcd", "hom", "arg", "mod", "bmod", "lim", "min", "max", "sup", "inf", "limsup", "liminf"]);
   const TEX_ACCENTS = { hat: "\u02c6", widehat: "\u02c6", bar: "\u00af", overline: "\u00af",
     vec: "\u2192", tilde: "\u02dc", widetilde: "\u02dc", dot: "\u02d9", ddot: "\u00a8",
     check: "\u02c7", breve: "\u02d8", acute: "\u00b4", grave: "`" };
@@ -260,15 +333,73 @@
   function mathText(value) { return { tag: "#text", text: String(value) }; }
   function mathSymbol(value) { return mathNode("mo", [mathText(value)]); }
   function mathSpace(width) { return mathNode("mspace", [], { width }); }
+  /* 1/6 em, the gap a typesetter puts between \sin and its operand. */
+  const OPERATOR_SPACE = '<mspace width="0.1667em"></mspace>';
 
   function mathAttributes(attrs) {
     const keys = Object.keys(attrs || {});
     return keys.length ? ` ${keys.map((key) => `${key}="${attrs[key]}"`).join(" ")}` : "";
   }
 
+  /* A requested style reaches the page as the styled Unicode character: Chromium
+     paints mathvariant="double-struck" as plain italic, so \mathbb{R} printed an
+     italic R. The reserved holes in each Unicode maths range (\u2102, \u211d, ...)
+     are spelled out because those letters are not in sequence. Word does not use
+     this table - docx.js writes m:scr/m:sty, which Word maps itself. */
+  const MATH_STYLED = {
+    "double-struck": {
+      upper: 0x1d538, lower: 0x1d552, digits: 0x1d7d8,
+      holes: { C: 0x2102, H: 0x210d, N: 0x2115, P: 0x2119, Q: 0x211a, R: 0x211d, Z: 0x2124 }
+    },
+    script: {
+      upper: 0x1d49c, lower: 0x1d4b6,
+      holes: { B: 0x212c, E: 0x2130, F: 0x2131, H: 0x210b, I: 0x2110, L: 0x2112,
+        M: 0x2133, R: 0x211b, e: 0x212f, g: 0x210a, h: 0x210e, l: 0x2113, o: 0x2134 }
+    },
+    fraktur: {
+      upper: 0x1d504, lower: 0x1d51e,
+      holes: { C: 0x212d, H: 0x210c, I: 0x2111, R: 0x211c, Z: 0x2128 }
+    },
+    bold: { upper: 0x1d400, lower: 0x1d41a, digits: 0x1d7ce },
+    "bold-italic": { upper: 0x1d468, lower: 0x1d482 },
+    "sans-serif": { upper: 0x1d5a0, lower: 0x1d5d4, digits: 0x1d7e2 },
+    monospace: { upper: 0x1d670, lower: 0x1d68a, digits: 0x1d7f6 }
+  };
+
+  function styledChar(char, table) {
+    if (table.holes && table.holes[char]) return String.fromCodePoint(table.holes[char]);
+    if (char >= "A" && char <= "Z" && table.upper) return String.fromCodePoint(table.upper + char.charCodeAt(0) - 65);
+    if (char >= "a" && char <= "z" && table.lower) return String.fromCodePoint(table.lower + char.charCodeAt(0) - 97);
+    if (char >= "0" && char <= "9" && table.digits) return String.fromCodePoint(table.digits + char.charCodeAt(0) - 48);
+    return char;
+  }
+
+  function mathNodeText(node) {
+    if (!node) return "";
+    if (node.tag === "#text") return String(node.text);
+    return (node.children || []).map(mathNodeText).join("");
+  }
+
+  /* Upright text (\mathrm, \text, \mod) becomes <mtext>: an upright run in every
+     engine, where mathvariant="normal" is not reliably honoured either. */
+  function styledToken(node, variant) {
+    if (node.tag !== "mi" && node.tag !== "mn" && node.tag !== "mtext") return "";
+    const text = mathNodeText(node);
+    if (!text) return "";
+    if (variant === "normal") return `<mtext>${escapeHtml(text)}</mtext>`;
+    const table = MATH_STYLED[variant];
+    if (!table) return "";
+    const styled = text.split("").map((char) => styledChar(char, table)).join("");
+    return `<${node.tag}>${escapeHtml(styled)}</${node.tag}>`;
+  }
+
   function serializeMath(node) {
     if (node.tag === "#text") return escapeHtml(node.text);
-    let core = `<${node.tag}${mathAttributes(node.attrs)}>${node.children.map(serializeMath).join("")}</${node.tag}>`;
+    /* A styled run still carries its own scripts: the old early return emitted
+       <mtext>lim</mtext> and dropped the "x\u21920" underneath it entirely. */
+    let core = "";
+    if (node.attrs && node.attrs.mathvariant) core = styledToken(node, node.attrs.mathvariant);
+    if (!core) core = `<${node.tag}${mathAttributes(node.attrs)}>${node.children.map(serializeMath).join("")}</${node.tag}>`;
     const under = node.__under ? serializeMath(node.__under) : "";
     const over = node.__over ? serializeMath(node.__over) : "";
     const sub = node.__sub ? serializeMath(node.__sub) : "";
@@ -280,14 +411,73 @@
       core = sub && sup ? `<msubsup>${core}${sub}${sup}</msubsup>`
         : sub ? `<msub>${core}${sub}</msub>` : `<msup>${core}${sup}</msup>`;
     }
+    // Operator-name spacing travels outside the script wrapper, so
+    // \lim_{x\to0} gets its gap after the limit and not inside it.
+    if (node.__tail) core += node.__tail;
     return core;
+  }
+
+  /* TeX's own comment rule: everything from an unescaped % to the end of the
+     line. Without this, "x^2 % square the side" typeset the comment as a run of
+     italic letters. */
+  function stripTeXComments(tex) {
+    return String(tex == null ? "" : tex).replace(/(^|[^\\])%[^\n]*/g, "$1");
   }
 
   const isTexLetter = (char) => (char >= "a" && char <= "z") || (char >= "A" && char <= "Z");
 
+  /* A display formula written over several lines - "2 + 2 = 4 \\\\ 4 + 2 = 6",
+     or the same with literal line breaks - is a stack of lines, not one long
+     line. Split it before tokenising, so a row break becomes a row rather than
+     0.3em of space between two statements. An environment (aligned, cases,
+     matrix) already splits its own rows and is left whole. */
+  function mathLines(tex) {
+    const source = stripTeXComments(tex);
+    if (/\\begin\s*\{/.test(source)) return [source];
+    const rows = [];
+    let current = "";
+    let depth = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      const char = source[index];
+      if (char === "\\" && /[&%$#_{}[\]]/.test(source[index + 1] || "")) {
+        current += char + source[index + 1];
+        index += 1;
+        continue;
+      }
+      if (char === "\\" && source[index + 1] === "\\" && depth === 0) {
+        rows.push(current);
+        current = "";
+        index += 1;
+        // \\\\[6pt] carries optional spacing after its row break.
+        const spacing = /^\s*\[[^\]]*\]/.exec(source.slice(index + 1));
+        if (spacing) index += spacing[0].length;
+        continue;
+      }
+      if ((char === "\n" || char === "\r") && depth === 0) {
+        if (current.trim()) { rows.push(current); current = ""; }
+        continue;
+      }
+      if (char === "{") depth += 1;
+      else if (char === "}") depth = Math.max(0, depth - 1);
+      current += char;
+    }
+    rows.push(current);
+    const lines = rows.map((row) => row.trim()).filter(Boolean);
+    return lines.length ? lines : [source];
+  }
+
+  /* One row per line, so every step keeps its own place on the page. The rows
+     share a left edge - the same shape Word gives an equation array (m:eqArr) -
+     so a .docx and a PDF of one conversation cannot disagree about it. */
+  function mathTable(lines) {
+    return mathNode("mtable", lines.map((line) =>
+      mathNode("mtr", [mathNode("mtd", mathNodes(line), { columnalign: "left" })])
+    ));
+  }
+
   /* Tokenise one TeX source string into MathML nodes. */
   function mathNodes(tex) {
-    const src = String(tex == null ? "" : tex);
+    const src = stripTeXComments(tex);
     let pos = 0;
     let depth = 0;
 
@@ -387,14 +577,24 @@
     function matrixNode(env, raw) {
       const rows = matrixRows(raw);
       if (!rows.length) return mathNode("mrow", []);
+      /* In an alignment the cells follow the equals sign immediately; the
+         default centre alignment left a wide gap in every multi-line step. */
+      const aligned = env === "aligned" || env === "align" || env === "gathered" || env === "split";
+      /* MathML Core ignores columnalign on the table and reads it from the
+         cell, so an aligned row that only set it on <mtable> still centred
+         every cell and left a wide gap in front of each step. */
+      const cellAttrs = aligned ? { columnalign: "left" } : {};
       const table = mathNode("mtable", rows.map((row) =>
-        mathNode("mtr", row.map((cell) => mathNode("mtd", mathNodes(cell))))
-      ));
+        mathNode("mtr", row.map((cell) => mathNode("mtd", mathNodes(cell), cellAttrs)))
+      ), aligned ? { columnalign: "left" } : {});
       const [open, close] = MATRIX_ENVS[env] || ["", ""];
       const children = [];
-      if (open) children.push(mathSymbol(open));
+      // A fence that does not stretch leaves a 2x2 bracket shorter than its
+      // matrix; MathML only grows a delimiter when it is told to.
+      const fence = (glyph) => mathNode("mo", [mathText(glyph)], { fence: "true", stretchy: "true" });
+      if (open) children.push(fence(open));
       children.push(table);
-      if (close) children.push(mathSymbol(close));
+      if (close) children.push(fence(close));
       return mathNode("mrow", children);
     }
 
@@ -477,8 +677,15 @@
           ]);
         case "boxed":
           return mathNode("menclose", [readArgument()], { notation: "box" });
-        case "text": case "textrm": case "mbox": case "operatorname":
+        case "text": case "textrm": case "mbox":
           return mathNode("mtext", [mathText(readRawGroup())]);
+        case "operatorname": {
+          /* An operator name is upright but still an operator: it needs a gap
+             before its operand, and "myop x" must not read "myopx". */
+          const fn = mathNode("mi", [mathText(readRawGroup())], { mathvariant: "normal" });
+          fn.__tail = OPERATOR_SPACE;
+          return fn;
+        }
         case "left": case "right": case "big": case "Big": case "bigg": case "Bigg":
         case "bigl": case "bigr": case "Bigl": case "Bigr":
         case "biggl": case "biggr": case "Biggl": case "Biggr":
@@ -509,7 +716,7 @@
           ]);
         case "quad": return mathSpace("1em");
         case "qquad": return mathSpace("2em");
-        case "limits": case "nolimits": case "displaystyle": case "textstyle": case "left.":
+        case "limits": case "nolimits": case "displaystyle": case "textstyle":
           return null;
         default:
           break;
@@ -519,7 +726,15 @@
         if (TEX_LIMITS.has(name)) op.__limits = true;
         return op;
       }
-      if (TEX_FUNCS.has(name)) return mathNode("mi", [mathText(name)], { mathvariant: "normal" });
+      if (TEX_FUNCS.has(name)) {
+        const fn = mathNode("mi", [mathText(name)], { mathvariant: "normal" });
+        /* \sin x typeset as "sin x", never "sinx": MathML has no implicit
+           function-application space. The gap is a node attribute so it lands
+           after any script (sin^2 x) rather than inside it. */
+        fn.__tail = OPERATOR_SPACE;
+        if (TEX_LIMITS.has(name)) fn.__limits = true;
+        return fn;
+      }
       if (TEX_ACCENTS[name]) {
         return mathNode("mover", [readArgument(), mathSymbol(TEX_ACCENTS[name])], { accent: "true" });
       }
@@ -560,30 +775,119 @@
   }
 
   /* Last resort for TeX the compiler cannot use: readable characters, never the
-     source commands. Fractions become (a)/(b), commands become their symbols
-     or names, and the braces disappear. */
+     source commands. Fractions become (a)/(b), roots get a radical, scripts keep
+     a marker, matrices become rows of cells, and unknown commands keep their
+     name without the backslash. This is the TXT and PNG formula renderer as well
+     as the fallback inside a rendered document, so it must read as mathematics
+     to a person, not as TeX. */
   function texToPlain(tex) {
-    let text = String(tex == null ? "" : tex);
+    let text = collapseEscapedCommands(stripTeXComments(stripTeXDelimiters(String(tex == null ? "" : tex))));
+
+    // Matrices and cases: one row per line, cells separated by commas.
+    for (let pass = 0; pass < 3; pass += 1) {
+      text = text.replace(/\\begin\{([a-zA-Z*]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
+        const rows = body
+          .split(/\\\\/)
+          .map((row) => row.split("&").map((cell) => cell.trim()).filter(Boolean).join(", "))
+          .filter(Boolean);
+        const joined = rows.join("; ");
+        if (env === "cases") return `{ ${joined} }`;
+        if (env === "bmatrix" || env === "pmatrix" || env === "Bmatrix") return `[${joined}]`;
+        return joined;
+      });
+    }
+
+    // Nested fractions and styled groups collapse from the inside out. A
+    // single symbol needs no brackets: "a/b" reads better than "(a)/(b)",
+    // while a compound operand keeps them so the grouping stays true.
+    const operand = (value) => {
+      const trimmed = String(value).trim();
+      return trimmed && (/^[A-Za-z0-9.,]+$/.test(trimmed) || /^\([^()]*\)$/.test(trimmed))
+        ? trimmed
+        : `(${trimmed})`;
+    };
     for (let pass = 0; pass < 4; pass += 1) {
       text = text
-        .replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)")
-        .replace(/\\(?:boxed|mathbf|mathit|boldsymbol|text|textrm|mathrm|operatorname)\s*\{([^{}]*)\}/g, "$1");
+        .replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (match, numerator, denominator) =>
+          `${operand(numerator)}/${operand(denominator)}`)
+        .replace(/\\[dt]?binom\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "C($1,$2)")
+        .replace(/\\(?:boxed|mathbf|mathit|boldsymbol|mathrm|mathsf|mathtt|text|textrm|mbox|overline|underline|widehat|widetilde|vec|bar|tilde|hat|dot|ddot|check|breve|acute|grave)\s*\{([^{}]*)\}/g, "$1");
     }
-    return text
-      .replace(/\\(?:left|right|big|Big|bigg|Bigg)\s*/g, "")
+
+    text = text
+      // Roots before the generic brace removal: \sqrt[3]{x} -> √[3](x).
+      .replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}/g, "\u221a[$1]($2)")
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, "\u221a($1)")
+      .replace(/\\sqrt\s*([A-Za-z0-9])/g, "\u221a$1")
+      // Scripts: ^{n+1} -> ^(n+1), _{ij} -> _(ij). A brace group without a
+      // script marker is just grouping and loses only the braces.
+      // A space the function name added must not sit between "lim" and its
+      // subscript: \lim_{x\to0} is one operator, not "lim _".
+      .replace(/\s*([\^_])\s*\{([^{}]*)\}/g, "$1($2)")
+      .replace(/\\operatorname\s*\{([^{}]*)\}/g, "$1 ")
+      .replace(/\\(?:left|right|big|Big|bigg|Bigg|bigl|bigr|Bigl|Bigr|biggl|biggr|Biggl|Biggr)\s*/g, "")
+      .replace(/\\[,;:!> ]/g, (match) => (match === "\\!" ? "" : " "))
+      .replace(/\\pmod\s*\{([^{}]*)\}/g, " (mod $1)")
+      .replace(/\\bmod/g, " mod ")
       .replace(/\\times/g, "\u00d7").replace(/\\cdot/g, "\u00b7").replace(/\\div/g, "\u00f7")
       .replace(/\\le(q)?/g, "\u2264").replace(/\\ge(q)?/g, "\u2265").replace(/\\neq/g, "\u2260")
-      .replace(/\\pm/g, "\u00b1").replace(/\\infty/g, "\u221e").replace(/\\bmod/g, " mod ")
-      .replace(/\\([a-zA-Z]+)/g, "$1")
+      .replace(/\\pm/g, "\u00b1").replace(/\\infty/g, "\u221e")
+      .replace(/\\to\b/g, "\u2192")
+      .replace(/\\\\/g, "; ")
+      .replace(/&/g, ", ")
+      .replace(/\\([a-zA-Z]+)/g, (match, name) => {
+        if (Object.prototype.hasOwnProperty.call(TEX_SYMBOLS, name)) return TEX_SYMBOLS[name];
+        if (Object.prototype.hasOwnProperty.call(TEX_BIGOPS, name)) return TEX_BIGOPS[name];
+        // A function name needs its separating space or "sin x" reads "sinx".
+        if (TEX_FUNCS.has(name)) return `${name} `;
+        return name;
+      })
+      // A source-level \{ or \} is a literal brace, not a grouping command.
+      // Park it outside the token stream while grouping braces are dropped,
+      // then restore it: otherwise the brace disappears and its backslash
+      // is left behind.
+      .replace(/\\\{/g, "\uE000")
+      .replace(/\\\}/g, "\uE001")
       .replace(/[{}]/g, "")
-      .replace(/\s+/g, " ")
+      .replace(/\uE000/g, "{")
+      .replace(/\uE001/g, "}")
+      .replace(/\$\$?/g, "");
+    // Relation spacing, so "a+H={a+h:h∈H}" reads as a sentence rather than
+    // a token stream. Braces around a function name must not survive either.
+    text = text
+      .replace(/\s*=\s*/g, " = ")
+      .replace(/\s*\u2208\s*/g, " \u2208 ")
+      .replace(/\s*\u2192\s*/g, " \u2192 ")
+      .replace(/\s+([\^_])/g, "$1")
+      .replace(/[ \t]+/g, " ")
+      .replace(/ ?\n ?/g, "\n")
       .trim();
+    return text;
   }
 
   /* Compile TeX to a MathML string. Empty output means "not usable as maths",
      and the caller falls back to showing the source. */
+  /* A chat that escapes its LaTeX (a code block, a table cell) sends \\begin,
+     \\frac and so on. The tokeniser reads \\ as a row break, so the command name
+     then printed as bare text ("lfloor", "begin"). Collapse the doubling, but
+     only in front of a name the compiler knows: a real matrix row break is
+     followed by an operand, never by a command such as \\frac. */
+  const TEX_CONTROL_NAMES = new Set([
+    ...Object.keys(TEX_SYMBOLS), ...Object.keys(TEX_BIGOPS), ...Object.keys(TEX_FONTS),
+    ...Object.keys(TEX_ACCENTS), ...TEX_FUNCS, ...TEX_LIMITS,
+    "frac", "dfrac", "tfrac", "sqrt", "binom", "dbinom", "tbinom", "boxed", "text",
+    "textrm", "mbox", "operatorname", "left", "right", "begin", "end", "pmod", "bmod",
+    "quad", "qquad", "big", "Big", "bigg", "Bigg", "bigl", "bigr", "Bigl", "Bigr",
+    "biggl", "biggr", "Biggl", "Biggr", "limits", "nolimits", "displaystyle", "textstyle"
+  ]);
+
+  function collapseEscapedCommands(tex) {
+    return String(tex).replace(/\\\\([A-Za-z]+)/g, (match, name) =>
+      (TEX_CONTROL_NAMES.has(name) ? "\\" + name : match));
+  }
+
   function stripTeXDelimiters(value) {
-    const source = String(value == null ? "" : value).trim();
+    const source = collapseEscapedCommands(String(value == null ? "" : value).trim());
     return source
       .replace(/^\$\$([\s\S]*)\$\$$/, "$1")
       .replace(/^\\\[([\s\S]*)\\\]$/, "$1")
@@ -592,10 +896,24 @@
       .trim();
   }
 
+  /* The TeX token tree, for a renderer that wants structure rather than MathML.
+     docx.js serialises it into Word's equation markup, so a .docx carries real
+     fractions, scripts and limits instead of TeX flattened into text. */
+  function mathTree(tex) {
+    try {
+      const lines = mathLines(stripTeXDelimiters(tex));
+      const nodes = lines.length > 1 ? [mathTable(lines)] : mathNodes(lines[0]);
+      return nodes.length ? nodes : null;
+    } catch {
+      return null;
+    }
+  }
+
   function texToMathML(tex, display) {
     let nodes;
     try {
-      nodes = mathNodes(stripTeXDelimiters(tex));
+      const lines = mathLines(stripTeXDelimiters(tex));
+      nodes = lines.length > 1 ? [mathTable(lines)] : mathNodes(lines[0]);
     } catch {
       return "";
     }
@@ -631,6 +949,18 @@
   }
 
   // "Output:" paragraph + following code block become one output panel.
+  function fallbackBlockText(block) {
+    if (!block) return "";
+    if (String(block.text || "").trim()) return String(block.text);
+    if (String(block.code || "").trim()) return String(block.code);
+    if (String(block.tex || "").trim()) return texToPlain(block.tex);
+    if (Array.isArray(block.items) && block.items.length) return block.items.join("\n");
+    if (Array.isArray(block.rows) && block.rows.length) {
+      return block.rows.map((row) => (Array.isArray(row) ? row.join(" | ") : String(row))).join("\n");
+    }
+    return "";
+  }
+
   function normalizeBlocks(blocks) {
     const out = [];
     for (let index = 0; index < blocks.length; index += 1) {
@@ -929,8 +1259,18 @@ code.inline { padding: 1px 5px; border-radius: 4px; background: var(--inline-bg)
 /* Ordinary equations are document text, not callouts: no panel, no fill.
    Only a \boxed{...} result carries an enclosure, because the source asked
    for one. */
+/* An equation block is sized by its maths and never scrolls. overflow-x: auto
+   used to sit here, and CSS computes the other axis of a non-visible overflow
+   to auto as well: that made every equation a two-axis scroll container, so a
+   narrow vertical scrollbar with arrow buttons appeared beside the maths, tall
+   limits and matrices were clipped, and a wide equation gained a horizontal
+   scrollbar that added its track to the block's height. The height belongs to
+   MathML; an equation wider than the column is narrowed by the renderer
+   instead (see fitDisplayMath in export/export.js). */
 .math { margin: 0 0 12px; padding: 0; border-radius: 0; background: transparent;
-  color: var(--ink); font-size: 12.5pt; line-height: 1.35; text-align: center; overflow-x: auto; }
+  color: var(--ink); font-size: 12.5pt; line-height: 1.35; text-align: center;
+  height: auto; overflow: visible; }
+.math > math { max-width: 100%; }
 
 /* Questions and calculation steps: type hierarchy, no card. */
 .question { margin: 18px 0 8px; padding: 0 0 5px; border-bottom: 1px solid var(--line);
@@ -1034,14 +1374,72 @@ html[data-keep="off"] .mcq { break-inside: auto; page-break-inside: auto; }
 
   /* --------------------------------------------------------- block rendering */
 
+  /* A nested list keeps its shape: items carry a depth, and the list kind of the
+     level they came from. Without nesting every child read as part of its
+     parent's sentence. */
+  function listTree(block) {
+    const items = Array.isArray(block.items) ? block.items : [];
+    const depths = Array.isArray(block.depths) ? block.depths : [];
+    const orders = Array.isArray(block.orders) ? block.orders : [];
+    const root = { ordered: Boolean(block.ordered), entries: [] };
+    /* The root sits at depth 0, not -1: the first item belongs to it. An
+       item deeper than its parent list opens a child list under the previous
+       item. Equal depths are siblings, so only a deeper level is popped. */
+    const stack = [{ node: root, depth: 0 }];
+    items.forEach((item, index) => {
+      const depth = Math.max(0, Math.min(8, Number(depths[index]) || 0));
+      while (stack.length > 1 && stack[stack.length - 1].depth > depth) stack.pop();
+      const top = stack[stack.length - 1];
+      if (depth > top.depth) {
+        const parent = top.node.entries[top.node.entries.length - 1];
+        if (parent) {
+          const sub = { ordered: orders.length ? orders[index] !== false : Boolean(block.ordered), entries: [] };
+          parent.children.push(sub);
+          stack.push({ node: sub, depth });
+        }
+      }
+      stack[stack.length - 1].node.entries.push({ text: item, children: [] });
+    });
+    return root;
+  }
+
   function renderList(block) {
-    const items = block.items.map((item) => `<li>${formatInline(item)}</li>`).join("");
-    /* The parser records whether the source element was <ol> or <ul>. Keep the
-       shape: a numbered list flattened to dots loses the step order that was
-       the point of the list. */
-    return block.ordered
-      ? `<ol class="list list--ordered">${items}</ol>`
-      : `<ul class="list">${items}</ul>`;
+    const renderNode = (node) => {
+      const tag = node.ordered ? "ol" : "ul";
+      const items = node.entries
+        .map((entry) => `<li>${formatInline(entry.text)}${entry.children.map(renderNode).join("")}</li>`)
+        .join("");
+      /* The parser records whether the source element was <ol> or <ul>. Keep the
+         shape: a numbered list flattened to dots loses the step order that was
+         the point of the list. */
+      return `<${tag} class="list${node.ordered ? " list--ordered" : ""}">${items}</${tag}>`;
+    };
+    const tree = listTree(block);
+    if (!tree.entries.length) return "";
+    return renderNode(tree);
+  }
+
+  /* Shared by Markdown, TXT and the PNG poster: a depth-first list with its
+     markers, so all three show the same nesting. */
+  function listLines(block, { markdown = false } = {}) {
+    const lines = [];
+    const counters = [];
+    const walk = (node, depth) => {
+      let counter = 0;
+      for (const entry of node.entries) {
+        counter += 1;
+        if (node.ordered) {
+          counters[depth] = (counters[depth] || 0) + 1;
+          for (let level = depth + 1; level < counters.length; level += 1) counters[level] = 0;
+        }
+        const marker = node.ordered ? `${counters[depth]}.` : "-";
+        const indent = markdown ? "  ".repeat(depth) : "  ".repeat(depth + 1);
+        lines.push({ text: entry.text, depth, marker, indent, ordered: node.ordered });
+        for (const child of entry.children) walk(child, depth + 1);
+      }
+    };
+    walk(listTree(block), 0);
+    return lines;
   }
 
   function renderCode(block, options) {
@@ -1313,8 +1711,10 @@ ${caption}${source}</figure>`;
       }
       case "divider":
         return '<hr class="divider">';
-      default:
-        return "";
+      default: {
+        const text = fallbackBlockText(block);
+        return text ? `<p>${formatInline(text)}</p>` : "";
+      }
     }
   }
 
@@ -1378,6 +1778,7 @@ ${renderBlocks(section.blocks, settings, state)}</article>`;
 
   /** Build the styled document body + css shared by the HTML view and print. */
   function buildDocument(chat, options = {}) {
+    chat = normalizeChat(chat);
     const page = pageOptions(options);
     const type = typeOptions(options);
     const settings = {
@@ -1480,23 +1881,25 @@ ${body}
      could become markup are neutralised, which keeps the source inert in viewers
      that ignore maths. */
   function markdownMath(value) {
-    return String(value == null ? "" : value)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    /* TeX, not HTML: "&" is the alignment marker in matrices and "aligned",
+       and a math viewer needs "<" and ">" as operators. Escaping them here
+       corrupts the formula that the format promises to preserve. */
+    return String(value == null ? "" : value);
   }
 
   function markdownInline(value) {
-    const source = String(value == null ? "" : value)
+    const source = hideEscapedDollars(String(value == null ? "" : value))
       .replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => "$$" + tex + "$$")
       .replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => "$" + tex + "$");
-    return source
-      .split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+\$)/g)
+    return restoreEscapedDollars(source
+      .split(new RegExp(`(${INLINE_MATH_SOURCE})`, "g"))
       .map((part) => {
         const display = /^\$\$([\s\S]+?)\$\$$/.exec(part);
         if (display) return "$$" + markdownMath(display[1]) + "$$";
         const math = /^\$([^$\n]+)\$$/.exec(part);
         return math ? "$" + markdownMath(math[1]) + "$" : markdownText(part);
       })
-      .join("");
+      .join(""));
   }
 
   function markdownCell(value) {
@@ -1528,8 +1931,8 @@ ${body}
               block.explanation ? markdownInline(block.explanation) : ""
             ].filter(Boolean).join("\n\n");
           case "list":
-            return block.items
-              .map((item, index) => (block.ordered ? `${index + 1}. ${markdownInline(item)}` : `- ${markdownInline(item)}`))
+            return listLines(block, { markdown: true })
+              .map((entry) => `${entry.indent}${entry.marker} ${markdownInline(entry.text)}`)
               .join("\n");
           case "quote": {
             const note = calloutDetails(block.text);
@@ -1576,13 +1979,16 @@ ${body}
           case "divider":
             return "---";
           default:
-            return "";
+            /* An unknown block is never dropped in silence: if it carries text,
+               it is still part of the conversation. */
+            return fallbackBlockText(block) ? markdownInline(fallbackBlockText(block)) : "";
         }
       })
       .join("\n\n");
   }
 
   function markdownFor(chat, options = {}) {
+    chat = normalizeChat(chat);
     const parts = [
       `# ${markdownText(chat.title || "AI conversation").replace(/[\r\n]+/g, " ")}`,
       `> Exported from ${markdownText(chat.platformLabel || "an AI chat")}${chat.model ? ` (${markdownText(chat.model)})` : ""} with AI Exporter`,
@@ -1600,6 +2006,7 @@ ${body}
   }
 
   function textFor(chat, options = {}) {
+    chat = normalizeChat(chat);
     const lines = [
       chat.title || "AI conversation",
       "=".repeat(Math.min(72, (chat.title || "AI conversation").length)),
@@ -1628,9 +2035,7 @@ ${body}
             break;
           case "list":
             lines.push(
-              ...block.items.map(
-                (item, index) => `  ${block.ordered ? `${index + 1}.` : "-"} ${plainInline(item)}`
-              ),
+              ...listLines(block).map((entry) => `${entry.indent}${entry.marker} ${plainInline(entry.text)}`),
               ""
             );
             break;
@@ -1644,19 +2049,27 @@ ${body}
             lines.push(block.code, "");
             break;
           case "table":
-            if (block.head && block.head.length) lines.push(block.head.join(" | "));
-            lines.push(...(block.rows || []).map((row) => row.join(" | ")), "");
+            if (block.head && block.head.length) {
+              lines.push(block.head.map((cell) => plainInline(cell)).join(" | "));
+              lines.push(block.head.map(() => "---").join(" | "));
+            }
+            lines.push(...(block.rows || []).map((row) => row.map((cell) => plainInline(cell)).join(" | ")), "");
             break;
           case "image":
             if (imageWanted(block, imageOptions(options))) {
-              lines.push(`[image: ${block.caption || block.alt || block.src}]`, "");
+              lines.push(`[image: ${plainInline(block.caption || block.alt || block.src)}]`, "");
             }
             break;
           case "formula":
-            lines.push(block.tex, "");
+            /* A .txt reader cannot typeset TeX: readable mathematics, never a
+               backslash command. */
+            lines.push(texToPlain(block.tex), "");
             break;
-          default:
+          default: {
+            const text = fallbackBlockText(block);
+            if (text) lines.push(plainInline(text), "");
             break;
+          }
         }
       }
     }
@@ -1664,6 +2077,7 @@ ${body}
   }
 
   function jsonFor(chat, options = {}) {
+    chat = normalizeChat(chat);
     return `${JSON.stringify(
       {
         ...chat,
@@ -1826,22 +2240,24 @@ ${body}
           y += 8;
           addText(block.text, { font: PNG_FONTS.sub, color: theme.ink, gap: 8 });
         } else if (block.type === "list") {
-          /* An ordered list prints its number in the marker column; the wider
-             gutter leaves room for double-digit steps. */
-          const indent = PAD + (block.ordered ? 36 : 26);
-          block.items.forEach((item, index) => {
-            if (block.ordered) {
+          /* One marker per item, indented by depth. An ordered list prints its
+             number in the marker column; the gutter leaves room for
+             double-digit steps. */
+          for (const entry of listLines(block)) {
+            const left = PAD + entry.depth * 26;
+            const indent = left + (entry.ordered ? 36 : 26);
+            if (entry.ordered) {
               nodes.push({
-                kind: "text", x: PAD + 6, y, lines: [`${index + 1}.`],
+                kind: "text", x: left + 6, y, lines: [entry.marker],
                 font: PNG_FONTS.meta, color: theme.accent, lineHeight: 30
               });
             } else {
-              nodes.push({ kind: "bullet", x: PAD + 8, y, color: theme.accent });
+              nodes.push({ kind: "bullet", x: left + 8, y, color: theme.accent });
             }
-            const lines = wrap(plainInline(item), PNG_FONTS.body, width - (indent - PAD));
+            const lines = wrap(plainInline(entry.text), PNG_FONTS.body, width - (indent - PAD));
             nodes.push({ kind: "text", x: indent, y, lines, font: PNG_FONTS.body, color: theme.ink, lineHeight: 30 });
             y += lines.length * 30 + 8;
-          });
+          }
           y += 6;
         } else if (block.type === "code") {
           const lines = [];
@@ -1900,7 +2316,9 @@ ${body}
             y += h + 14;
           }
         } else if (block.type === "formula") {
-          const lines = wrap(block.tex, PNG_FONTS.code, width - 30);
+          /* Canvas has no MathML layout engine, so a poster shows the readable
+             form of the formula, not its TeX source. */
+          const lines = wrap(texToPlain(block.tex), PNG_FONTS.code, width - 30);
           const h = lines.length * 28 + 24;
           nodes.push({ kind: "callout", x: PAD, y, w: width, h, lines, fill: theme.accentSoft, bar: theme.accent, ink: theme.accent, font: PNG_FONTS.code, lineHeight: 28 });
           y += h + 14;
@@ -1940,6 +2358,9 @@ ${body}
               font: PNG_FONTS.meta, color: theme.muted, gap: 14, x
             });
           }
+        } else {
+          const text = fallbackBlockText(block);
+          if (text) addText(text, { font: PNG_FONTS.body, color: theme.ink, gap: 12 });
         }
       }
       y += 22;
@@ -2118,6 +2539,49 @@ ${body}
     return loaded;
   }
 
+  /* Canvas PNGs carry no physical resolution. Writing a pHYs chunk records
+     the DPI the raster actually represents (96 CSS px per inch times the
+     export scale), so a 2x poster is 192 DPI in a page layout instead of an
+     image of unknown size. */
+  const PNG_CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+      table[index] = value >>> 0;
+    }
+    return table;
+  })();
+
+  function pngCrc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) crc = PNG_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  async function pngWithDpi(blob, dpi) {
+    try {
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      if (bytes.length < 33) return blob;
+      const pixelsPerMetre = Math.max(1, Math.round(dpi / 0.0254));
+      const chunk = new Uint8Array(21);
+      const view = new DataView(chunk.buffer);
+      view.setUint32(0, 9);
+      chunk.set([0x70, 0x48, 0x59, 0x73], 4); // pHYs
+      view.setUint32(8, pixelsPerMetre);
+      view.setUint32(12, pixelsPerMetre);
+      chunk[16] = 1; // unit: metre
+      view.setUint32(17, pngCrc32(chunk.subarray(4, 17)));
+      const out = new Uint8Array(bytes.length + chunk.length);
+      out.set(bytes.subarray(0, 33), 0); // signature + IHDR
+      out.set(chunk, 33);
+      out.set(bytes.subarray(33), 33 + chunk.length);
+      return new Blob([out], { type: "image/png" });
+    } catch {
+      return blob;
+    }
+  }
+
   async function pngFor(chat, options = {}) {
     if (typeof document === "undefined") throw new Error("PNG export needs a browser document.");
     const measure = document.createElement("canvas").getContext("2d");
@@ -2126,13 +2590,29 @@ ${body}
     // PNG detail is the one place an image-quality choice changes the bytes:
     // standard rasterises at 1.5x, high at 2x. Document formats always embed
     // the source asset at full resolution.
-    const scale = options.imageQuality === "high" ? 2 : 1.5;
-    const width = Math.round(layout.width * scale);
-    const height = Math.round(layout.height * scale);
-    // ponytail: one PNG, capped at 16M pixels (~64MB RGBA); use PDF for longer chats.
-    if (width > 16384 || height > 16384 || width * height > 16 * 1024 * 1024) {
-      throw new Error("This selection is too large for one PNG. Select fewer messages, or export PDF, Word (.docx) or Markdown instead.");
+    const requested = options.imageQuality === "high" ? 2 : 1.5;
+    const MAX_SIDE = 16384;
+    const MAX_PIXELS = 16 * 1024 * 1024;
+    const dimensions = (value) => ({
+      width: Math.round(layout.width * value),
+      height: Math.round(layout.height * value)
+    });
+    const fits = (value) => {
+      const { width, height } = dimensions(value);
+      return width <= MAX_SIDE && height <= MAX_SIDE && width * height <= MAX_PIXELS;
+    };
+    /* A tall conversation can exceed the canvas limit. Reduce the raster scale
+       before failing, and say so: a lower-detail poster is a usable file, while
+       a silently cropped one is not. */
+    const scale = [requested, 1.5, 1.25, 1, 0.75, 0.5, 0.35].find((value) => value <= requested && fits(value));
+    if (!scale) {
+      const { width, height } = dimensions(requested);
+      throw new Error(
+        `This selection is too large for one PNG even at low detail (${width} x ${height} px at ${requested}x; ` +
+        "the canvas limit is 16384 px per side and 16 megapixels). Select fewer messages, or export PDF, Word (.docx) or Markdown instead."
+      );
     }
+    const { width, height } = dimensions(scale);
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -2141,9 +2621,18 @@ ${body}
     try {
       ctx.scale(scale, scale);
       paintPng(ctx, layout);
-      return await new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not render the image. Try PDF or a smaller selection.")), "image/png");
+      const raster = await new Promise((resolve, reject) => {
+        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not render the image. Try PDF or a smaller selection.")), "image/png");
       });
+      // Record the real physical resolution for page layout software.
+      const blob = await pngWithDpi(raster, Math.round(96 * scale));
+      // The caller reports a reduced scale instead of pretending the requested
+      // detail was produced.
+      blob.exportScale = scale;
+      blob.requestedScale = requested;
+      blob.pixelWidth = width;
+      blob.pixelHeight = height;
+      return blob;
     } finally {
       canvas.width = 0;
       canvas.height = 0;
@@ -2152,12 +2641,93 @@ ${body}
 
   /* --------------------------------------------------------------- validation */
 
+  const MODEL_BLOCK_TYPES = new Set([
+    "heading", "subheading", "paragraph", "list", "quote", "code", "table", "image", "formula", "divider"
+  ]);
+
+  const modelText = (value) => (value == null ? "" : String(value));
+  const modelList = (value) => (Array.isArray(value) ? value.map(modelText) : []);
+
+  /**
+   * One canonical document model, applied before any exporter runs. The parser
+   * and the background handoff both produce this shape already; normalising
+   * here means a hand-built chat (a test fixture, a future importer) cannot
+   * reach one renderer in a different shape from another, and an unrecognised
+   * block keeps its text instead of disappearing.
+   */
+  function normalizeChat(chat) {
+    const source = chat && typeof chat === "object" ? chat : {};
+    const messages = (Array.isArray(source.messages) ? source.messages : []).map((message, index) => {
+      const blocks = (Array.isArray(message && message.blocks) ? message.blocks : []).map((block) => {
+        const raw = block && typeof block === "object" ? block : {};
+        let type = raw.type;
+        if (!MODEL_BLOCK_TYPES.has(type)) {
+          if (raw.tex) type = "formula";
+          else if (raw.code != null) type = "code";
+          else if (Array.isArray(raw.rows)) type = "table";
+          else if (Array.isArray(raw.items)) type = "list";
+          else type = "paragraph";
+        }
+        switch (type) {
+          case "heading":
+          case "subheading":
+            return { ...raw, type, level: Math.max(1, Math.min(6, Number(raw.level) || 2)), text: modelText(raw.text) };
+          case "list": {
+            const items = modelList(raw.items);
+            const out = { ...raw, type, ordered: Boolean(raw.ordered), items };
+            if (Array.isArray(raw.depths) && raw.depths.length === items.length) {
+              out.depths = raw.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)));
+            }
+            if (Array.isArray(raw.orders) && raw.orders.length === items.length) {
+              out.orders = raw.orders.map((ordered) => Boolean(ordered));
+            }
+            return out;
+          }
+          case "table": {
+            const rows = Array.isArray(raw.rows) ? raw.rows.map(modelList) : [];
+            return { ...raw, type, head: modelList(raw.head), rows };
+          }
+          case "code":
+            return { ...raw, type, language: modelText(raw.language) || "text", code: modelText(raw.code), output: Boolean(raw.output) };
+          case "formula":
+            return { ...raw, type, tex: modelText(raw.tex) };
+          case "image":
+            return {
+              ...raw, type, src: modelText(raw.src), alt: modelText(raw.alt), caption: modelText(raw.caption),
+              width: Number(raw.width) > 0 ? Number(raw.width) : undefined,
+              height: Number(raw.height) > 0 ? Number(raw.height) : undefined
+            };
+          case "divider":
+            return { ...raw, type };
+          default:
+            return { ...raw, type, text: modelText(raw.text) };
+        }
+      });
+      return {
+        ...message,
+        id: modelText(message && message.id) || `message-${index + 1}`,
+        role: ["user", "assistant", "system"].includes(message && message.role) ? message.role : "unknown",
+        blocks
+      };
+    });
+    return {
+      ...source,
+      title: modelText(source.title) || "AI conversation",
+      platformLabel: modelText(source.platformLabel) || modelText(source.platform) || "AI conversation",
+      model: modelText(source.model),
+      url: modelText(source.url),
+      exportedAt: modelText(source.exportedAt) || new Date().toISOString(),
+      messages
+    };
+  }
+
   /**
    * Post-extraction sanity report. The parser already de-duplicates and orders
    * messages, but a silent drop is the one failure an exporter must never hide:
    * when the counts look wrong the export view says so before the user saves.
    */
   function validateChat(chat) {
+    chat = normalizeChat(chat);
     const messages = Array.isArray(chat && chat.messages) ? chat.messages : [];
     const counts = { user: 0, assistant: 0, system: 0, unknown: 0, empty: 0, code: 0, tables: 0, images: 0, formulas: 0 };
     const ids = new Set();
@@ -2293,15 +2863,21 @@ ${body}
 
   /* ------------------------------------------------------------------- build */
 
-  async function prepareImages(chat, options = {}) {
-    if (!options.remoteImages) return { chat, warnings: [] };
+  async function prepareImages(chat, options = {}, format = "") {
+    if (!options.remoteImages && format !== "docx") return { chat, warnings: [] };
     const warnings = [];
     const converted = new Map();
     const messages = [];
     for (const message of chat.messages || []) {
       const blocks = [];
       for (const block of message.blocks || []) {
-        if (!block || block.type !== "image" || !/^https:\/\//i.test(String(block.src || "")) || !imageWanted(block, imageOptions(options))) {
+        /* Word's package can contain PNG, JPEG and GIF only. A data URI in a
+           newer format (WebP, AVIF) is transcoded to PNG here, so it is embedded
+           rather than degrading to a placeholder. Remote retrieval is opt-in. */
+        const src = String((block && block.src) || "");
+        const remote = /^https:\/\//i.test(src) && options.remoteImages === true;
+        const needsWordTranscode = format === "docx" && /^data:image\/(?:webp|avif);base64,/i.test(src);
+        if (!block || block.type !== "image" || (!remote && !needsWordTranscode) || !imageWanted(block, imageOptions(options))) {
           blocks.push(block);
           continue;
         }
@@ -2346,9 +2922,10 @@ ${body}
   }
 
   async function build(chat, format, options = {}) {
+    chat = normalizeChat(chat);
     const name = baseName(chat, options);
     const prepared = ["docx", "html", "markdown", "image"].includes(format)
-      ? await prepareImages(chat, options)
+      ? await prepareImages(chat, options, format)
       : { chat, warnings: [] };
     chat = prepared.chat;
     const warnings = prepared.warnings;
@@ -2368,8 +2945,16 @@ ${body}
         const bytes = generator.build(chat, options);
         return { filename: `${name}.docx`, mime: generator.MIME, blob: new Blob([bytes], { type: generator.MIME }), bytes, warnings };
       }
-      case "image":
-        return { filename: `${name}.png`, mime: "image/png", blob: await pngFor(chat, options), warnings };
+      case "image": {
+        const blob = await pngFor(chat, options);
+        if (blob.exportScale && blob.requestedScale && blob.exportScale < blob.requestedScale) {
+          warnings.push({
+            asset: "PNG",
+            reason: `Rendered at ${blob.exportScale}x (${blob.pixelWidth} \u00d7 ${blob.pixelHeight} px) instead of ${blob.requestedScale}x so the image stays inside the canvas limit.`
+          });
+        }
+        return { filename: `${name}.png`, mime: "image/png", blob, warnings };
+      }
       default:
         throw new Error(`Unsupported export format: ${format}`);
     }
@@ -2379,6 +2964,10 @@ ${body}
 
   globalThis.AIExporter = {
     texToPlain,
+    INLINE_MATH_SOURCE,
+    mathTree,
+    highlightTokens,
+    normalizeChat,
     version: VERSION,
     build,
     FORMATS,

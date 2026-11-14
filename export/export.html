@@ -46,7 +46,7 @@
           <h1>AI Exporter Studio</h1>
           <p>Publication-quality exports for AI conversations</p>
         </div>
-        <span class="badge badge--blue">v0.9.0</span>
+        <span class="badge badge--blue">v1.0.0</span>
       </div>
       <div class="appbar-meta">
         <span class="pill" id="app-source"><svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg><span>Local conversation</span></span>
@@ -422,8 +422,14 @@
             <li data-stage="2">Generating document</li>
             <li data-stage="3">Validating export</li>
           </ol>
+          <div class="modal-actions">
+            <button class="btn btn--secondary" id="modal-cancel" type="button">Cancel export</button>
+          </div>
         </div>
         <div class="modal-state" id="modal-success" hidden>
+          <button class="icon-btn modal-x" id="modal-success-close" type="button" aria-label="Dismiss notification" title="Dismiss">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+          </button>
           <div class="modal-icon modal-icon--ok" aria-hidden="true"><svg><use href="#i-check"></use></svg></div>
           <h2>Export complete</h2>
           <p id="modal-file">document.pdf</p>

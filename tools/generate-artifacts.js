@@ -207,6 +207,25 @@ try {
   const contentTypes = docEntry(docxEntries, "[Content_Types].xml").data.toString("utf8");
   const tableXml = docEntry(tableEntries, "word/document.xml").data.toString("utf8");
 
+  /* python-docx is an independent reader: it proves the package opens and that
+     the header/footer parts are reachable, which our own XML cannot. */
+  const docxInspect = spawnSync("python", [
+    path.join(ROOT, "tools", "inspect-docx.py"),
+    path.join(OUTPUT, "conversation.docx"),
+    path.join(OUTPUT, "table-headers.docx")
+  ], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  let docxReport = null;
+  let docxError = "";
+  if (docxInspect.status === 0) {
+    try {
+      docxReport = JSON.parse(docxInspect.stdout);
+    } catch (error) {
+      docxError = `inspect-docx.py returned unreadable JSON: ${error.message}`;
+    }
+  } else {
+    docxError = (docxInspect.stderr || docxInspect.stdout || "python-docx inspection failed").slice(0, 400);
+  }
+
   const xmlTargets = [
     ["conversation.docx", docxEntries],
     ["table-headers.docx", tableEntries]
@@ -239,6 +258,8 @@ try {
 
   const json = JSON.parse(jsonText);
   const png = pngInfo(pngBytes);
+  const pngPages = generated.files.filter((file) => /^conversation(-\d\d)?\.png$/.test(file.name));
+  const pngPageSize = (name) => (written.find((file) => file.name === name) || {}).size || 0;
   const imageMedia = docxEntries.filter((entry) => entry.name.startsWith("word/media/"));
   const formulaCount = generated.summary.formulas;
   const pdfConversationPages = pdfReport
@@ -271,6 +292,16 @@ try {
   record("DOCX code keeps indentation and syntax colours", /<w:t xml:space="preserve"> {4}<\/w:t>/.test(docXml) && /<w:color w:val="8250DF"\/>/.test(docXml) && /<w:color w:val="953800"\/>/.test(docXml), "spaces, keyword and number runs");
   record("DOCX numbering declares all nine levels", (numberingXml.match(/<w:lvl w:ilvl=/g) || []).length === 18 && (numberingXml.match(/<w:lvlOverride/g) || []).length >= 9, "bullet + decimal × 9");
   record("DOCX table header repeats across pages", (tableXml.match(/<w:tblHeader\/>/g) || []).length === 1 && (tableXml.match(/<w:tr>/g) || []).length === 71, "71 rows, one repeating header");
+  const wordFirst = docxReport && docxReport[0] ? docxReport[0] : null;
+  record("Word opens in an independent reader with a real page-number field",
+    Boolean(wordFirst) && wordFirst.detail[0].footer_has_page_field === true && wordFirst.page_number_references >= 1,
+    docxError || (wordFirst ? `${wordFirst.sections} section(s), footer PAGE field read by python-docx` : "no report"));
+  record("Word page setup survives a third-party read",
+    Boolean(wordFirst) && Math.abs(wordFirst.detail[0].page_width_mm - 210) <= 2 && Math.abs(wordFirst.detail[0].page_height_mm - 297) <= 2 && wordFirst.tables >= 1,
+    wordFirst ? `${wordFirst.detail[0].page_width_mm}×${wordFirst.detail[0].page_height_mm} mm, ${wordFirst.tables} tables` : "no report");
+  record("PNG pages are separate, complete images",
+    pngPages.length >= 2 && pngPages.every((file) => pngPageSize(file.name) > 2000) && pngPages.every((file) => file.pixelWidth === pngPages[0].pixelWidth),
+    `${pngPages.length} page files, ${pngPageSize(pngPages[0].name)} bytes the first`);
   record("PNG has the reported dimensions and real DPI", png.width === written.find((file) => file.name === "conversation.png").pixelWidth && png.height === written.find((file) => file.name === "conversation.png").pixelHeight && png.dpi && png.dpi.unit === 1, `${png.width}×${png.height} at ${png.dpi ? png.dpi.x : "?"} DPI`);
   record("PDF inspection ran", Boolean(pdfReport), pdfError || `${pdfReport ? pdfReport.length : 0} files`);
 

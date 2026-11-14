@@ -93,10 +93,15 @@
 
   /* Long conversations are virtualised: the site keeps only the turns around
      the viewport in the document, so "every message on the page" was really
-     the two on screen. Walking the thread mounts the older turns, each step is
-     parsed and merged, and the reader's position is put back afterwards. */
-  const THREAD_STEPS = 60;
+     the two on screen. Walking the thread mounts the missing turns, each step
+     is parsed and merged, and the reader's position is put back afterwards.
+
+     A walk that runs out of steps before it runs out of thread is reported as
+     incomplete; the export never presents a partial conversation as whole. */
+  const THREAD_STEPS = 80;
   const THREAD_SETTLE_MS = 180;
+  /* Three steps with nothing new means the thread is not going to mount more. */
+  const THREAD_STALLS = 3;
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -110,49 +115,79 @@
     return page && page.scrollHeight > page.clientHeight + 40 ? page : null;
   }
 
+  /* One walk, used for both directions. "earlier" climbs towards the start of
+     the conversation, "later" drops towards its end; merging is positional, so
+     the direction only decides where each parsed batch is spliced in. */
+  async function walkThread(scroller, entries, direction) {
+    const distance = Math.max(160, Math.round(scroller.clientHeight * 0.85));
+    const atEdge = () => (direction === "earlier"
+      ? scroller.scrollTop <= 0
+      : scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1);
+    let steps = 0;
+    let stalls = 0;
+    while (steps < THREAD_STEPS && !atEdge()) {
+      const before = entries.length;
+      const next = direction === "earlier"
+        ? Math.max(0, scroller.scrollTop - distance)
+        : Math.min(scroller.scrollHeight, scroller.scrollTop + distance);
+      if (next === scroller.scrollTop) break; // nothing left in this direction
+      scroller.scrollTop = next;
+      await wait(THREAD_SETTLE_MS);
+      parser.mergeEntries(entries, parser.findMessages(document, location), direction === "earlier" ? "start" : "end");
+      steps += 1;
+      if (entries.length !== before) {
+        stalls = 0;
+        continue;
+      }
+      /* A step that mounted nothing is not a failure yet: the site may still be
+         fetching. Give it one more settle, and only three such steps in a row
+         count as the end of the thread. */
+      stalls += 1;
+      if (atEdge() || stalls >= THREAD_STALLS) break;
+    }
+    return { steps, limitReached: steps >= THREAD_STEPS && !atEdge() };
+  }
+
+  /* The whole thread, as far as it can be mounted, plus an honest account of
+     how far that was. `complete` is false only when the step budget ran out
+     while the thread still had somewhere to scroll. */
   async function collectThread() {
     const entries = parser.findMessages(document, location);
-    if (!entries.length) return entries;
+    if (!entries.length) return { entries, complete: true, limitReached: false, steps: 0 };
     const scroller = scrollerFor(entries[entries.length - 1].element);
-    if (!scroller) return entries;
+    if (!scroller) return { entries, complete: true, limitReached: false, steps: 0 };
 
     const original = scroller.scrollTop;
-    const distance = Math.max(160, Math.round(scroller.clientHeight * 0.85));
-    const read = (at) => parser.mergeEntries(entries, parser.findMessages(document, location), at);
-
-    if (original > 0) {
-      /* The reader is at the bottom, so the turns that have not been read are
-         above: each batch is older than everything collected so far. */
-      for (let step = 0; step < THREAD_STEPS; step += 1) {
-        const before = entries.length;
-        scroller.scrollTop = Math.max(0, scroller.scrollTop - distance);
-        await wait(THREAD_SETTLE_MS);
-        read("start");
-        if (scroller.scrollTop <= 0 && entries.length === before) break;
-      }
-    } else {
-      // Already at the top: the newer turns are the ones that are not mounted.
-      for (let step = 0; step < THREAD_STEPS; step += 1) {
-        const before = entries.length;
-        scroller.scrollTop = Math.min(scroller.scrollHeight, scroller.scrollTop + distance);
-        await wait(THREAD_SETTLE_MS);
-        read("end");
-        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-        if (atBottom && entries.length === before) break;
-      }
+    /* The reader is usually at the bottom, so the turns that have not been read
+       are above; somebody parked at the very top needs the newer turns instead. */
+    const direction = original > 0 ? "earlier" : "later";
+    let result = { steps: 0, limitReached: false };
+    try {
+      result = await walkThread(scroller, entries, direction);
+    } finally {
+      scroller.scrollTop = original;
     }
-
-    scroller.scrollTop = original;
-    return entries;
+    return { entries, complete: !result.limitReached, limitReached: result.limitReached, steps: result.steps };
   }
 
   async function openExport(format, ids, view = "") {
     /* A whole-conversation export reads the thread as far as it can be
        mounted; a selection already names its own messages. */
     const collected = ids ? null : await collectThread();
-    const chat = collected && collected.length
-      ? parser.chatFrom(collected, document, location)
+    const chat = collected && collected.entries.length
+      ? parser.chatFrom(collected.entries, document, location)
       : parser.parsePage(document, location, ids ? { only: ids } : undefined);
+    /* How much of the thread this export actually saw travels with the chat, so
+       the workspace can warn before anything is downloaded. */
+    if (collected) {
+      chat.coverage = {
+        ...(chat.coverage || {}),
+        complete: collected.complete,
+        limitReached: collected.limitReached,
+        steps: collected.steps,
+        collected: chat.messages.length
+      };
+    }
     const unreadable = chat.coverage && chat.coverage.unreadable ? chat.coverage.unreadable : 0;
     if (!chat.messages.length) {
       showToast("Could not detect chat on this page. Please refresh and try again.", true);

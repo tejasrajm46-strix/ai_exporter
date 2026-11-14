@@ -74,3 +74,24 @@ MathML. Above the canvas limit the renderer lowers the scale and reports it.
 
 **JSON.** Complete, schema-versioned normalised document; the source of truth for
 any downstream tool.
+
+---
+
+## Changes after the v1.1 remediation pass
+
+| Feature | HTML | PDF | DOCX | Markdown | TXT | PNG | JSON |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PNG pagination | – | – | – | – | – | **7 pages for the fixture, A4 proportion, 192 DPI** | – |
+| Page numbers | dialog | dialog | **real `PAGE` field, on by default** | – | – | – | – |
+| Header / footer text | – | – | **opt-in, `headerText` / `footerText`** | – | – | – | – |
+| Section breaks | – | – | **opt-in, one section per message** | – | – | – | – |
+| Wide equations | **wrapped at top-level operators** | **same, because PDF prints the fitted preview** | OMML cannot wrap (unchanged) | TeX verbatim | words | plain words | TeX |
+
+PNG page geometry: 1240 layout units wide, 1753 per page (A4 ratio), margins
+78 units on every page. Pages vary in height only where a single element forced
+a taller page, and a sliver shorter than 35% of a page is folded into the page
+before it, so exports do not trail off into near-empty images.
+
+DOCX furniture is validated by an independent reader (`python-docx`): the
+package opens, the section reports 210 × 297 mm, and the footer contains the
+`PAGE` field. It has not been opened in Word or LibreOffice on this machine.

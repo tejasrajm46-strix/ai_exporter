@@ -40,6 +40,64 @@
     };
   }
 
+  /* ------------------------------------------------------- headers and footers */
+
+  /* Word draws a page number as a field, never as text: PAGE is recalculated by
+     the application, so a footer holding a literal "1" would print 1 on every
+     page. Begin / instruction / end are the field; the cached result between
+     "separate" and "end" is what a viewer that does not recalculate shows. */
+  function pageField(palette) {
+    return '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+      '<w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>' +
+      '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+      run("1", { color: palette.muted, size: 18 }) +
+      '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+  }
+
+  /* Page furniture is opt-out, not opt-in: a multi-page document without page
+     numbers is the surprising result. A header and a footer line are opt-in. */
+  function chromeSettings(options = {}) {
+    const position = ["left", "center", "right"].includes(options.pageNumberPosition)
+      ? options.pageNumberPosition
+      : "center";
+    const pageNumbers = options.pageNumbers !== false;
+    const headerText = String(options.headerText || "").trim();
+    const footerText = String(options.footerText || "").trim();
+    return {
+      pageNumbers,
+      position,
+      headerText,
+      footerText,
+      header: Boolean(headerText),
+      footer: pageNumbers || Boolean(footerText),
+      sections: options.sectionBreaks === true
+    };
+  }
+
+  function headerXml(chrome, palette) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="${WORD_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:p>${paragraphProperties({ align: chrome.position })}${run(chrome.headerText, { color: palette.muted, size: 18 })}</w:p></w:hdr>`;
+  }
+
+  function footerXml(chrome, palette) {
+    const content = [
+      chrome.footerText ? run(chrome.footerText, { color: palette.muted, size: 18 }) : "",
+      chrome.footerText && chrome.pageNumbers ? run("   \u00b7   ", { color: palette.muted, size: 18 }) : "",
+      chrome.pageNumbers ? pageField(palette) : ""
+    ].join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="${WORD_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:p>${paragraphProperties({ align: chrome.position })}${content}</w:p></w:ftr>`;
+  }
+
+  /* One description of the page, used by the body's final section and by every
+     section break, so a broken section cannot drift from the document it ends. */
+  function sectPrXml(page, chrome = {}) {
+    const orient = page.orientation === "landscape" ? ' w:orient="landscape"' : "";
+    const header = chrome.header ? '<w:headerReference w:type="default" r:id="rIdHeader"/>' : "";
+    const footer = chrome.footer ? '<w:footerReference w:type="default" r:id="rIdFooter"/>' : "";
+    return `<w:sectPr>${header}${footer}<w:pgSz w:w="${twips(page.width)}" w:h="${twips(page.height)}"${orient}/><w:pgMar w:top="${twips(page.margin.top)}" w:right="${twips(page.margin.right)}" w:bottom="${twips(page.margin.bottom)}" w:left="${twips(page.margin.left)}" w:header="708" w:footer="708" w:gutter="0"/><w:cols w:space="708"/><w:docGrid w:linePitch="360"/></w:sectPr>`;
+  }
+
   function typeSettings(options = {}) {
     const shared = globalThis.AIExporter && globalThis.AIExporter.typeOptions;
     return shared ? shared(options) : { size: 11.5, lineHeight: 1.6, paragraphSpacing: 11, body: "sans" };
@@ -464,7 +522,13 @@
     if (style) parts.push(`<w:pStyle w:val="${style}"/>`);
     if (keepNext) parts.push("<w:keepNext/>");
     if (pageBreakBefore) parts.push("<w:pageBreakBefore/>");
-    if (numId) parts.push(`<w:numPr><w:ilvl w:val="${Math.max(0, Math.min(8, Number(ilvl) || 0))}"/><w:numId w:val="${numId}"/></w:numPr>`);
+    if (numId) {
+      // Word numbering has nine levels; the shared clamp is the same one the
+      // renderer and the handoff use, so a list cannot change depth on the way
+      // into the file.
+      const level = globalThis.AILimits ? globalThis.AILimits.listDepth(ilvl) : Math.max(0, Math.min(8, Number(ilvl) || 0));
+      parts.push(`<w:numPr><w:ilvl w:val="${level}"/><w:numId w:val="${numId}"/></w:numPr>`);
+    }
     if (border) parts.push(border);
     if (shading) parts.push(`<w:shd w:val="clear" w:color="auto" w:fill="${shading}"/>`);
     if (before != null || after != null || line) {
@@ -818,6 +882,12 @@ ${style({
     }
 
     messages.forEach((message, index) => {
+      /* A section break is the paragraph that closes the section before it; the
+         final section's properties live at the end of the body. Opt-in, because
+         most conversations read better as one continuous section. */
+      if (context.sections && index > 0) {
+        push(`<w:p><w:pPr>${sectPrXml(context.page, {})}</w:pPr></w:p>`);
+      }
       const stampDate = message.timestamp ? new Date(message.timestamp) : null;
       const stamp = context.timestamps && stampDate && Number.isFinite(stampDate.getTime())
         ? `  ${stampDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
@@ -1107,8 +1177,11 @@ ${style({
 
   /* -------------------------------------------------------------- package parts */
 
-  function contentTypes(media) {
+  function contentTypes(media, chrome = {}) {
     const extensions = [...new Set(media.map((item) => item.extension))];
+    const parts = [];
+    if (chrome.header) parts.push('<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>');
+    if (chrome.footer) parts.push('<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>');
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -1118,6 +1191,7 @@ ${extensions.map((extension) => `<Default Extension="${extension}" ContentType="
 <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
 <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
 <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+${parts.join("\n")}
 </Types>`;
   }
 
@@ -1129,11 +1203,16 @@ ${extensions.map((extension) => `<Default Extension="${extension}" ContentType="
 </Relationships>`;
   }
 
-  function documentRels(media) {
+  function documentRels(media, chrome = {}) {
+    const furniture = [
+      chrome.header ? '<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>' : "",
+      chrome.footer ? '<Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' : ""
+    ].filter(Boolean).join("\n");
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 <Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
+${furniture}
 ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${item.name}"/>`).join("\n")}
 </Relationships>`;
   }
@@ -1153,11 +1232,10 @@ ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.ope
 </cp:coreProperties>`;
   }
 
-  function documentXml(body, page) {
-    const orient = page.orientation === "landscape" ? ' w:orient="landscape"' : "";
+  function documentXml(body, page, chrome = {}) {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="${WORD_NS}" xmlns:m="${MATH_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-<w:body>${body}<w:sectPr><w:pgSz w:w="${twips(page.width)}" w:h="${twips(page.height)}"${orient}/><w:pgMar w:top="${twips(page.margin.top)}" w:right="${twips(page.margin.right)}" w:bottom="${twips(page.margin.bottom)}" w:left="${twips(page.margin.left)}" w:header="708" w:footer="708" w:gutter="0"/><w:cols w:space="708"/><w:docGrid w:linePitch="360"/></w:sectPr></w:body>
+<w:body>${body}${sectPrXml(page, chrome)}</w:body>
 </w:document>`;
   }
 
@@ -1166,6 +1244,7 @@ ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.ope
   function parts(chat, options = {}) {
     const docMode = options.docMode === "bw" ? "bw" : "color";
     const page = pageSettings(options);
+    const chrome = chromeSettings(options);
     const contentMm = page.width - page.margin.left - page.margin.right;
     const context = {
       palette: PALETTES[docMode],
@@ -1178,19 +1257,22 @@ ${media.map((item) => `<Relationship Id="${item.relId}" Type="http://schemas.ope
       images: imageSettings(options),
       media: [],
       orderedLists: [],
-      figures: 0
+      figures: 0,
+      sections: chrome.sections
     };
 
     const body = bodyXml(chat, context);
     const files = [
-      { name: "[Content_Types].xml", text: contentTypes(context.media) },
+      { name: "[Content_Types].xml", text: contentTypes(context.media, chrome) },
       { name: "_rels/.rels", text: rootRels() },
       { name: "docProps/core.xml", text: coreXml(chat) },
-      { name: "word/document.xml", text: documentXml(body, context.page) },
+      { name: "word/document.xml", text: documentXml(body, context.page, chrome) },
       { name: "word/styles.xml", text: stylesXml(context.palette, context.type) },
       { name: "word/numbering.xml", text: numberingXml(context.orderedLists) },
-      { name: "word/_rels/document.xml.rels", text: documentRels(context.media) }
+      { name: "word/_rels/document.xml.rels", text: documentRels(context.media, chrome) }
     ];
+    if (chrome.header) files.push({ name: "word/header1.xml", text: headerXml(chrome, context.palette) });
+    if (chrome.footer) files.push({ name: "word/footer1.xml", text: footerXml(chrome, context.palette) });
     for (const item of context.media) {
       files.push({ name: `word/media/${item.name}`, bytes: item.bytes });
     }

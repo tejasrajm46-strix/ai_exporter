@@ -424,6 +424,106 @@
     ensure(styled.includes("\u230a") && styled.includes("\u2308"), "Floor and ceiling must reach Word as glyphs.");
     ensure(!/lfloor|rfloor|lceil|rceil/.test(styled), "Word must not print floor or ceiling command names.");
   });
+  /* Regression for BUG-2: Word carried its own inline scanner, so a price next
+     to a formula became an equation and the real expression became prose.
+     These are the six cases the remediation pass names. */
+  await check("Word reads text and mathematics the same way the document does", () => {
+    const blocks = [
+      { type: "paragraph", text: "It costs $5 for $x^2$ units, and $10 for the rest." },
+      { type: "paragraph", text: String.raw`Escaped \$7 and \$9 stay prices.` },
+      { type: "paragraph", text: String.raw`Adjacent: $a$ and $b$ and $c+d$.` },
+      { type: "paragraph", text: String.raw`Nested: $\frac{1}{1+\frac{1}{x}}$ in one run.` },
+      { type: "formula", tex: String.raw`\frac{1}{1+\frac{1}{x}}` },
+      { type: "paragraph", text: "Specials: 5 < 6 & 7 > 4, snake_case, **bold**, `code`, a|b." }
+    ];
+    const xml = docxText({ ...chat, messages: [{ role: "assistant", blocks }] });
+    // Inline mathematics: each price is prose, each expression is an equation.
+    ensure(xml.includes("It costs $5 for "), "A price must stay prose in Word.");
+    ensure(xml.includes("and $10 for the rest."), "The second price must survive.");
+    ensure(!xml.includes("\\$"), "An escaped price must lose its backslash.");
+    const inline = (xml.match(/<m:oMath>/g) || []).length;
+    ensure(inline >= 4, `Adjacent and nested expressions must each compile, got ${inline}.`);
+    ensure(xml.includes("<m:rad") || xml.includes("<m:f"), "A nested fraction must reach Word as a fraction.");
+    // Display mathematics: its own equation paragraph.
+    ensure(xml.includes("<m:oMathPara"), "A display formula must use an equation paragraph.");
+    ensure(!/\\frac|\\sqrt|\\begin\{/.test(xml), "No raw TeX may reach Word.");
+    // Ordinary text with special characters is escaped, never dropped.
+    ensure(xml.includes("5 &lt; 6 &amp; 7 &gt; 4"), "Special characters must be escaped, not dropped.");
+    ensure(xml.includes("snake_case") && xml.includes("a|b"), "Ordinary special text must survive.");
+  });
+  /* Page furniture is a separate part with its own relationship; a footer that
+     is only referenced from the body is not a footer Word will show. */
+  await check("Word carries page numbers, an optional header and section breaks", () => {
+    const defaults = AIExporterDocx.parts(chat, {});
+    const names = defaults.files.map((file) => file.name);
+    ensure(names.includes("word/footer1.xml"), "Page numbers are on by default and need a footer part.");
+    const footer = defaults.files.find((file) => file.name === "word/footer1.xml").text;
+    ensure(/<w:instrText xml:space="preserve"> PAGE <\/w:instrText>/.test(footer), "The page number must be a PAGE field.");
+    const body = defaults.files.find((file) => file.name === "word/document.xml").text;
+    ensure(/<w:footerReference w:type="default" r:id="rIdFooter"\/>/.test(body), "The body must reference the footer.");
+    const rels = defaults.files.find((file) => file.name === "word/_rels/document.xml.rels").text;
+    ensure(rels.includes("footer1.xml"), "The footer must be a real relationship.");
+    const types = defaults.files.find((file) => file.name === "[Content_Types].xml").text;
+    ensure(types.includes("/word/footer1.xml"), "The footer needs a content type.");
+    const configured = AIExporterDocx.parts(chat, {
+      headerText: "AI Exporter", footerText: "Transcript", pageNumberPosition: "right", sectionBreaks: true
+    });
+    const configuredNames = configured.files.map((file) => file.name);
+    ensure(configuredNames.includes("word/header1.xml"), "A header text must produce a header part.");
+    ensure(configured.files.find((file) => file.name === "word/header1.xml").text.includes("AI Exporter"), "The header text must reach the header.");
+    const rightFooter = configured.files.find((file) => file.name === "word/footer1.xml").text;
+    ensure(/w:jc w:val="right"/.test(rightFooter), "The page number position must be honoured.");
+    ensure(rightFooter.includes("Transcript"), "The footer text must reach the footer.");
+    const sectioned = configured.files.find((file) => file.name === "word/document.xml").text;
+    ensure((sectioned.match(/<w:sectPr>/g) || []).length >= 2, "Section breaks must add a section property per section.");
+    const off = AIExporterDocx.parts(chat, { pageNumbers: false }).files.map((file) => file.name);
+    ensure(!off.includes("word/footer1.xml"), "Turning page numbers off must remove the footer part.");
+  });
+  /* A wide display equation must wrap between terms, not shrink into
+     illegibility and not run into the margin. */
+  await check("A wide equation wraps between terms instead of being clipped", () => {
+    const terms = Array.from({ length: 14 }, (_, index) => `a_{${index + 1}}`).join(" + ");
+    const holder = document.createElement("div");
+    holder.style.cssText = "width:320px;position:absolute;left:-9999px;top:0";
+    const block = document.createElement("div");
+    block.className = "math";
+    block.style.fontSize = "20px";
+    block.innerHTML = exporter.texToMathML(`${terms} = S`, true);
+    holder.appendChild(block);
+    document.body.appendChild(holder);
+    try {
+      const before = block.getBoundingClientRect().width;
+      const stats = exporter.fitDisplayMathBlocks(holder);
+      const math = block.firstElementChild;
+      ensure(stats.wrapped >= 1, `The equation should wrap at top-level operators (wrapped=${stats.wrapped}).`);
+      ensure(math.firstElementChild.localName === "mtable", "A wrapped equation becomes a table of lines.");
+      const rows = [...math.querySelectorAll("mtr")];
+      ensure(rows.length >= 2, "Wrapping must produce more than one line.");
+      const widest = Math.max(...rows.map((row) => row.getBoundingClientRect().width));
+      ensure(widest <= 322, `No wrapped line may leave the column (widest ${Math.round(widest)}, column 320, was ${Math.round(before)}).`);
+      ensure(!block.dataset.mathOverflow, "A wrappable equation must not be marked as overflowing.");
+    } finally {
+      holder.remove();
+    }
+  });
+  /* A long conversation becomes several page files rather than one poster
+     squeezed until the canvas refuses it. */
+  await check("A long PNG export is split into pages, not squeezed", async () => {
+    const paragraphs = Array.from({ length: 90 }, (_, index) => ({
+      type: "paragraph",
+      text: `Paragraph ${index + 1}. ` + "A sentence long enough to take a line or two of the poster width. ".repeat(3)
+    }));
+    const long = { ...chat, messages: [{ role: "assistant", blocks: paragraphs }] };
+    const rendered = await exporter.pngPagesFor(long, { theme: "light", includeImages: false });
+    ensure(rendered.pages.length > 1, `A long document must paginate, got ${rendered.pages.length} page(s).`);
+    ensure(rendered.pages.every((page) => page.blob.size > 2000), "Every page must contain a real bitmap.");
+    const width = rendered.pages[0].width;
+    ensure(rendered.pages.every((page) => page.width === width), "Pages share one width.");
+    const tallest = Math.max(...rendered.pages.map((page) => page.height));
+    ensure(tallest <= 16384, `A page must stay inside the canvas limit, tallest was ${tallest}.`);
+    const total = rendered.pages.reduce((sum, page) => sum + page.height, 0);
+    ensure(total > tallest, "The pages must cover the document between them.");
+  });
   /* Regression: the inline-maths pattern used to accept a closing `$` that
      followed a space, so "costs $5 for $x$ units" typeset "5for" as a formula,
      swallowed the price and left a dangling "x$" in HTML, Word, Markdown and
@@ -1277,11 +1377,21 @@
     const result = await exporter.build(tall, "image", {});
     ensure((result.warnings || []).some((item) => /Rendered at .*x .* instead of/.test(item.reason)), "The reduced scale must be reported, never silent.");
   });
-  await check("PNG beyond every safe scale is rejected before drawing", async () => {
+  await check("PNG paginates a tall block instead of refusing it", async () => {
+    const tall = { ...chat, messages: [{ role: "assistant", blocks: [
+      { type: "code", language: "cpp", code: "    int value = 1;\n".repeat(400) },
+      { type: "paragraph", text: "After the block." }
+    ] }] };
+    const rendered = await exporter.pngPagesFor(tall, { includeImages: false });
+    ensure(rendered.pages.length >= 1, "A tall code block must still export.");
+    ensure(rendered.pages.every((page) => page.blob.size > 2000), "Every page must carry a real bitmap.");
+    ensure(rendered.pages.every((page) => page.height <= 16384), "No page may exceed the canvas limit.");
+  });
+  await check("PNG refuses an indivisible block taller than the canvas, with a reason", async () => {
     const huge = { ...chat, messages: [{ role: "assistant", blocks: [{ type: "code", language: "cpp", code: "    int value = 1;\n".repeat(6000) }] }] };
-    let rejected = false;
-    try { await exporter.pngFor(huge); } catch (error) { rejected = /too large for one PNG/.test(error.message); }
-    ensure(rejected, "A selection that cannot fit at any safe scale must fail with a real reason.");
+    let message = "";
+    try { await exporter.pngFor(huge); } catch (error) { message = error.message; }
+    ensure(/too large to rasterise/.test(message), `An impossible selection must fail with a real reason, got "${message}".`);
   });
   await check("Small PNG exports a real PNG blob with its real DPI", async () => {
     const blob = await exporter.pngFor({ ...chat, messages: [chat.messages[0]] });

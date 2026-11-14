@@ -154,3 +154,27 @@ Files: `utils/docx.js` (`bigOperator`, `naryXml`).
 4. Word n-ary detection widened to integrals.
 5. Regression checks at unit level (`selftest.js`) and at byte level
    (`generate-artifacts.js`), then regenerate every artifact and inspect it.
+
+---
+
+## 8. Remediation audit addendum (post-review pass)
+
+The v1.0 review of `37da75f` / `ce9e560` raised five defects and four code-quality
+findings. Re-auditing the committed implementation confirmed all of them:
+
+| Confirmed defect | Severity | Evidence |
+| --- | --- | --- |
+| PNG had no multi-page fallback | High | `pngFor()` had a single canvas and a scale ladder ending in refusal |
+| Equation fitting could clip at the 0.72 floor | Medium | `fitDisplayMath()` shrank only; no wrapping path existed |
+| Incomplete thread extraction was silent | High | `collectThread()` returned entries with no completeness signal |
+| DOCX had no page numbers, header/footer or sections | Medium | one bare `w:sectPr`; no header/footer parts in the package |
+| BUG-2 had artifact-level coverage only | Low | no selftest assertion read `document.xml` for it |
+
+Code-quality findings confirmed as described in the review: the list-depth clamp
+existed in three modules, the scroll walk in two loops, one `\u00b7` escape was
+inconsistent with its file, and `fitDisplayMath()` reached into the preview DOM
+from the workspace controller. All are addressed; see
+`POST_IMPLEMENTATION_REVIEW.md`.
+
+No new defect was found in the areas the review did not touch (parser, MCQ
+folding, document model validation, download confirmation, security posture).

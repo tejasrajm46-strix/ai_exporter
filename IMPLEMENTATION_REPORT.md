@@ -103,3 +103,24 @@ Parser, MCQ folding, document model, PNG canvas, image pipeline, print CSS,
 workspace UI, cancellation, downloads and security posture were audited and left
 alone: they already satisfy the brief and rewriting them would have risked
 working behaviour without adding capability.
+
+---
+
+## 8. Remediation pass (v1.1)
+
+| Change | File | Verified by |
+| --- | --- | --- |
+| PNG pagination: A4-proportion windows, breaks only between nodes, sliver folding, per-page margins | `utils/exporter.js` | 7 page files generated and inspected; 2 selftest checks; 1 artifact check |
+| Multi-file download with per-file cancellation and a combined completion | `export/export.js` | artifact page writes every page; completion path unchanged |
+| Equation wrapping at top-level operators, then shrink, then explicit overflow marking | `utils/exporter.js` (`wrapMathRows`, `fitDisplayMathBlocks`) | selftest "A wide equation wraps…" |
+| Fitting moved out of the workspace | `export/export.js` | same check, called on a plain DOM |
+| One thread walk with direction, stall detection and a step budget | `content/content.js` | `npm run check`; coverage note path |
+| Completeness counts carried through the handoff and shown before export | `background/service_worker.js`, `export/export.js` | workspace notice path |
+| DOCX page-number field, header/footer parts, rels, content types, opt-in section breaks | `utils/docx.js` | 1 selftest check; python-docx inspection; 2 artifact checks |
+| Shared numeric limits | `utils/limits.js` + 3 call sites + 2 script tags | `npm run check` (11 scripts parse) |
+| Middle-dot consistency | `export/export.js` | rendered status line |
+| BUG-2 Word regression coverage | `selftest.js` | 101/101 |
+| Independent DOCX reader | `tools/inspect-docx.py` | artifact run |
+
+Totals after the pass: **101/101 browser checks**, **34/34 artifact checks**,
+**11 scripts parse and 9 manifest paths resolve**.

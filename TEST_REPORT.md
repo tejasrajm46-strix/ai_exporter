@@ -152,3 +152,56 @@ index sits at the top-left of its radical. No glyph was missing or clipped.
   structurally (ZIP signature, 14 well-formed XML parts, relationships, content
   types, valid OMML).
 * No accessibility or performance audit (Lighthouse) was run.
+
+---
+
+## 8. Remediation pass — results (v1.1)
+
+```
+npm run check      11 scripts parse and 9 manifest paths resolve.
+npm test           101/101 browser checks passed.
+npm run artifacts  34/34 artifact checks passed.
+```
+
+Checks added in this pass:
+
+| Level | Check | What it proves |
+| --- | --- | --- |
+| selftest | Word reads text and mathematics the same way the document does | BUG-2: six cases over `word/document.xml` |
+| selftest | Word carries page numbers, an optional header and section breaks | footer part, PAGE field, body reference, rel, content type, alignment, header/footer text, ≥2 `sectPr`, opt-out |
+| selftest | A wide equation wraps between terms instead of being clipped | `mtable` wrapping, every line inside a 320 px column |
+| selftest | A long PNG export is split into pages, not squeezed | 90 paragraphs → several pages, real bitmaps, one width, inside the canvas limit |
+| selftest | PNG paginates a tall block instead of refusing it | 400-line code block still exports |
+| selftest | PNG refuses an indivisible block taller than the canvas, with a reason | 6000-line block refused explicitly, never cropped |
+| artifact | PNG pages are separate, complete images | 7 page files, identical width, non-empty |
+| artifact | Word opens in an independent reader with a real page-number field | python-docx reads the PAGE field and the section |
+| artifact | Word page setup survives a third-party read | 210 × 297 mm, 3 tables, read by python-docx |
+
+Two checks were replaced rather than deleted: "PNG beyond every safe scale is
+rejected before drawing" became "PNG paginates a tall block instead of refusing
+it" and "PNG refuses an indivisible block…", because pagination is now the
+correct behaviour for the case it described.
+
+### Generated output inspected in this pass
+
+* **PNG** — 7 pages: 2480 × 3390, 3402, 3497, 2872, 3501, 3048, 3378 px at
+  192 DPI. Ink coverage measured per page (11–80%): no blank page. First and last
+  pages viewed (`tests/visual/png-page1.png`, `tests/visual/png-last.png`):
+  consistent margins, figures with their captions, transcript footer on the last
+  page only, no clipping.
+* **DOCX** — read by `python-docx`: opens, 1 section, 210 × 297 mm, footer with a
+  real `PAGE` field, 3 tables. All 16 XML parts well-formed.
+* **PDF** — unchanged in layout; 5 variants re-printed and re-inspected (A4
+  portrait 10 pages, Letter landscape 14, wide margins 10, cover 11, table
+  headers 4 pages). Text still searchable, fonts still embedded.
+* **HTML / Markdown / TXT / JSON** — regenerated; all previous checks still pass.
+
+### Still not executed
+
+* No office renderer exists here, so DOCX page numbering has **not** been seen
+  painted by Word/LibreOffice. It is verified as a real field, part,
+  relationship and content type, read back by a third-party parser.
+* The extension was not loaded as an unpacked extension; the controller runs in
+  the DOM harness.
+* The thread-walk completeness path has no browser fixture; it is verified by
+  reading the code and by `npm run check`, not by driving a virtualised thread.

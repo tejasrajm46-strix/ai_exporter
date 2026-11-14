@@ -547,7 +547,7 @@
     ui.countDiagrams.textContent = String(counts.diagram);
     ui.countCharts.textContent = String(counts.chart);
     ui.scopeVisuals.textContent = `${counts.total} visual${counts.total === 1 ? "" : "s"}`;
-    ui.visualSummary.textContent = `${reportVisualSummary(counts.total)} available \u00b7 ${options.includeImages === false ? "images off" : options.includeDiagrams === false ? "diagrams off" : "included"}`;
+    ui.visualSummary.textContent = `${reportVisualSummary(counts.total)} available · ${options.includeImages === false ? "images off" : options.includeDiagrams === false ? "diagrams off" : "included"}`;
     ui.scopeCount.textContent = String(included.size);
     ui.appScope.textContent = `${included.size} message${included.size === 1 ? "" : "s"}`;
 
@@ -773,27 +773,12 @@
     }
   }
 
-  /* Mathematics cannot wrap, and hiding an over-wide equation behind a
-     scrollbar is what put scrollbar arrows beside the maths in the first place
-     (see .math in utils/exporter.js). The document itself no longer scrolls, so
-     an equation wider than the text column is narrowed to the column here,
-     down to a floor that stays legible. It is a preview/print pass: the saved
-     .html keeps its natural size, because it has no script to run. */
-  const MATH_FIT_FLOOR = 0.72;
+  /* Fitting is document behaviour, so it lives in utils/exporter.js where a
+     test can call it on a plain DOM; the workspace only decides when it runs
+     (after every preview load and before printing). */
   function fitDisplayMath() {
-    const doc = ui.preview.contentDocument;
-    if (!doc) return;
-    for (const block of doc.querySelectorAll(".math")) {
-      block.style.fontSize = ""; // measure the unscaled equation on every pass
-      const math = block.firstElementChild;
-      if (!math || math.tagName.toLowerCase() !== "math") continue;
-      const available = block.clientWidth;
-      const needed = (math.firstElementChild || math).getBoundingClientRect().width;
-      if (!available || needed <= available) continue;
-      const size = parseFloat(doc.defaultView.getComputedStyle(block).fontSize) || 0;
-      const scale = Math.max(MATH_FIT_FLOOR, available / needed);
-      if (size && scale < 1) block.style.fontSize = `${size * scale}px`;
-    }
+    if (!ui.preview.contentDocument) return;
+    exporter.fitDisplayMathBlocks(ui.preview.contentDocument);
   }
 
   /**
@@ -1254,9 +1239,10 @@
            is the only file name that can honestly be shown. */
         const finish = (savedName) => {
           const name = savedName || entry.filename;
+          const label = entry.fileCount > 1 ? `${entry.fileCount} files (${entry.filename})` : name;
           hideModal();
           showSuccess({
-            filename: name,
+            filename: label,
             size: entry.size,
             format: entry.format,
             pages: entry.pages,
@@ -1264,7 +1250,7 @@
             warnings: entry.warnings
           });
           setStatus(
-            `Export complete: ${name}.${auditNotice ? ` Note: ${auditNotice}` : ""}`,
+            `Export complete: ${label}.${auditNotice ? ` Note: ${auditNotice}` : ""}`,
             "ok",
             chrome.downloads && typeof chrome.downloads.showDefaultFolder === "function"
               ? { label: "Show folder", run: () => chrome.downloads.showDefaultFolder() }
@@ -1329,6 +1315,7 @@
               format,
               size: details.size || blob.size,
               pages: details.pages || 0,
+              fileCount: details.fileCount || 1,
               visuals: details.visuals || 0,
               warnings: details.warnings || [],
               timer: setTimeout(() => releaseDownload(downloadId), 600000)
@@ -1622,20 +1609,50 @@
       await nextFrame();
       ensureActive();
       const pages = formatView(format).pane === "document" ? estimatePages() : 0;
-      const details = { size: blob.size, pages, visuals: report.included, warnings };
-      const saved = await saveBlob(blob, result.filename, format, details);
-      if (cancelRequested) {
-        // The reader cancelled while the download was being handed over.
-        if (chrome.downloads && typeof chrome.downloads.cancel === "function") {
-          try {
-            chrome.downloads.cancel(saved.downloadId, () => void chrome.runtime.lastError);
-          } catch {
-            // Already complete; nothing left to withdraw.
+      /* A paginated PNG export is several files. They are handed to the browser
+         one at a time, in page order, and every one of them is still checked for
+         cancellation; the success card waits for the last completion event. */
+      const parts = Array.isArray(result.files) && result.files.length > 1 ? result.files : null;
+      const totalSize = parts
+        ? parts.reduce((sum, part) => sum + part.blob.size, 0)
+        : blob.size;
+      const details = { size: totalSize, pages, visuals: report.included, warnings, fileCount: parts ? parts.length : 1 };
+      let saved;
+      if (parts) {
+        for (const part of parts) {
+          saved = await saveBlob(part.blob, part.filename, format, { ...details, size: part.blob.size });
+          if (cancelRequested) {
+            if (chrome.downloads && typeof chrome.downloads.cancel === "function") {
+              try {
+                chrome.downloads.cancel(saved.downloadId, () => void chrome.runtime.lastError);
+              } catch {
+                // Already complete; nothing left to withdraw.
+              }
+            }
+            releaseDownload(saved.downloadId);
+            latestDownloadId = null;
+            throw new ExportCancelled();
           }
         }
-        releaseDownload(saved.downloadId);
-        latestDownloadId = null;
-        throw new ExportCancelled();
+        saved = {
+          filename: `${parts.length} PNG pages (${parts[0].filename} … ${parts[parts.length - 1].filename})`,
+          downloadId: saved.downloadId
+        };
+      } else {
+        saved = await saveBlob(blob, result.filename, format, details);
+        if (cancelRequested) {
+          // The reader cancelled while the download was being handed over.
+          if (chrome.downloads && typeof chrome.downloads.cancel === "function") {
+            try {
+              chrome.downloads.cancel(saved.downloadId, () => void chrome.runtime.lastError);
+            } catch {
+              // Already complete; nothing left to withdraw.
+            }
+          }
+          releaseDownload(saved.downloadId);
+          latestDownloadId = null;
+          throw new ExportCancelled();
+        }
       }
       markStage(3, "done");
       persistSettings();
@@ -1968,11 +1985,19 @@
        Saying so here is the difference between an incomplete export and an
        export the reader was warned about. */
     const coverage = chat.coverage || null;
-    if (coverage && coverage.unreadable > 0) {
+    if (coverage && (coverage.unreadable > 0 || coverage.limitReached || coverage.complete === false)) {
       ui.coverageNote.hidden = false;
-      ui.coverageNote.textContent = `This page was not read completely: ${coverage.unreadable} message container${
-        coverage.unreadable === 1 ? "" : "s"
-      } could not be extracted. Check the preview before exporting.`;
+      const parts = [];
+      if (coverage.unreadable > 0) {
+        parts.push(`${coverage.unreadable} message container${coverage.unreadable === 1 ? "" : "s"} could not be extracted`);
+      }
+      if (coverage.limitReached || coverage.complete === false) {
+        parts.push(`the thread walk stopped after ${coverage.steps || 0} step${coverage.steps === 1 ? "" : "s"}, so older turns may still be unmounted`);
+      }
+      ui.coverageNote.hidden = false;
+      ui.coverageNote.textContent = `This export is incomplete: ${chat.messages.length} message${
+        chat.messages.length === 1 ? "" : "s"
+      } were collected, and ${parts.join("; ")}. Check the preview before exporting.`;
     }
 
     selectedFormat = FORMATS[options.format] ? options.format : "pdf";

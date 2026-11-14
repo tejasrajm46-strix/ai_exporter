@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T06:46:59.802Z",
+  "generatedAt": "2026-11-14T07:14:20.782Z",
   "generator": "AI Exporter 1.0.0 artifact generator",
   "summary": {
     "messages": 4,
@@ -55,25 +55,92 @@
       "name": "conversation.docx",
       "format": "docx",
       "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "size": 257838,
-      "sha256": "764af08b770d6c91",
+      "size": 258854,
+      "sha256": "7bf32a6a6c0fb2e9",
       "warnings": []
     },
     {
       "name": "conversation.png",
       "format": "image",
       "mime": "image/png",
-      "size": 1303056,
-      "sha256": "eab4adba607fbc6c",
-      "warnings": [
-        {
-          "asset": "PNG",
-          "reason": "Rendered at 1x (1240 × 10452 px) instead of 2x so the image stays inside the canvas limit."
-        }
-      ],
-      "pixelWidth": 1240,
-      "pixelHeight": 10452,
-      "exportScale": 1,
+      "size": 487441,
+      "sha256": "d1cb98c4ee5fd330",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3390,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-02.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 615807,
+      "sha256": "0a0a575fbc539d0d",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3402,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-03.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 634990,
+      "sha256": "141ea8a15ef4f18e",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3497,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-04.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 510379,
+      "sha256": "4badc484c654f9c3",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 2872,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-05.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 521921,
+      "sha256": "cafd128e3d114c07",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3501,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-06.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 555823,
+      "sha256": "9707452703e4fbde",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3048,
+      "exportScale": 2,
+      "requestedScale": 2
+    },
+    {
+      "name": "conversation-07.png",
+      "format": "image",
+      "mime": "image/png",
+      "size": 481579,
+      "sha256": "373bf9b5c27904ae",
+      "warnings": [],
+      "pixelWidth": 2480,
+      "pixelHeight": 3378,
+      "exportScale": 2,
       "requestedScale": 2
     },
     {
@@ -88,8 +155,8 @@
       "name": "table-headers.docx",
       "format": "docx",
       "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "size": 83183,
-      "sha256": "715198ac8462b12f",
+      "size": 84199,
+      "sha256": "a8a6c5abeb9211c2",
       "warnings": []
     }
   ],
@@ -692,6 +759,7 @@
       "word/styles.xml",
       "word/numbering.xml",
       "word/_rels/document.xml.rels",
+      "word/footer1.xml",
       "word/media/image1.png",
       "word/media/image2.jpeg",
       "word/media/image3.png",
@@ -762,6 +830,12 @@
         "error": ""
       },
       {
+        "label": "conversation.docx",
+        "name": "word/footer1.xml",
+        "ok": true,
+        "error": ""
+      },
+      {
         "label": "table-headers.docx",
         "name": "[Content_Types].xml",
         "ok": true,
@@ -802,15 +876,21 @@
         "name": "word/_rels/document.xml.rels",
         "ok": true,
         "error": ""
+      },
+      {
+        "label": "table-headers.docx",
+        "name": "word/footer1.xml",
+        "ok": true,
+        "error": ""
       }
     ]
   },
   "png": {
     "signature": "89504e470d0a1a0a",
-    "width": 1240,
-    "height": 10452,
+    "width": 2480,
+    "height": 3390,
     "dpi": {
-      "x": 96,
+      "x": 192,
       "unit": 1
     }
   },
@@ -818,7 +898,7 @@
     {
       "name": "All seven formats produced a non-empty file",
       "pass": true,
-      "detail": "7 files"
+      "detail": "13 files"
     },
     {
       "name": "The test conversation validates against the document schema",
@@ -883,12 +963,12 @@
     {
       "name": "DOCX is a valid package with every required part",
       "pass": true,
-      "detail": "11 entries"
+      "detail": "12 entries"
     },
     {
       "name": "Every DOCX XML part is well-formed",
       "pass": true,
-      "detail": "14 parts"
+      "detail": "16 parts"
     },
     {
       "name": "DOCX carries real OMML equations, not TeX text",
@@ -916,9 +996,24 @@
       "detail": "71 rows, one repeating header"
     },
     {
+      "name": "Word opens in an independent reader with a real page-number field",
+      "pass": true,
+      "detail": "1 section(s), footer PAGE field read by python-docx"
+    },
+    {
+      "name": "Word page setup survives a third-party read",
+      "pass": true,
+      "detail": "210×297 mm, 3 tables"
+    },
+    {
+      "name": "PNG pages are separate, complete images",
+      "pass": true,
+      "detail": "7 page files, 487441 bytes the first"
+    },
+    {
       "name": "PNG has the reported dimensions and real DPI",
       "pass": true,
-      "detail": "1240×10452 at 96 DPI"
+      "detail": "2480×3390 at 192 DPI"
     },
     {
       "name": "PDF inspection ran",

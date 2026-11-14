@@ -922,6 +922,99 @@
     return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="${display ? "block" : "inline"}">${body}</math>`;
   }
 
+  /* --------------------------------------------------------- equation fitting */
+
+  /* A display equation cannot break the way prose does: a fraction, a root, a
+     matrix or a scripted atom is one unit and must stay one. It can still be
+     broken *between* top-level terms, after a relation or a binary operator,
+     which is exactly where a printed derivation wraps and is safe. Whatever
+     still does not fit afterwards is scaled down, but never below a legible
+     floor: a small equation is readable, a clipped one is not. */
+  const MATH_BREAK_AFTER = new Set(["+", "−", "-", "=", "≤", "≥", "<", ">", "∈", "→", "×", "·", "∪", "∩", "±", "≈"]);
+  const MATH_FIT_FLOOR = 0.72;
+  const MATH_ABS_FLOOR = 0.55;
+  const MATH_NS = "http://www.w3.org/1998/Math/MathML";
+
+  /* Rewrite one over-wide equation as an mtable of lines, splitting only
+     between existing top-level children. Returns false when the equation is a
+     single unit (a matrix, one fraction) and shrinking is the only option. */
+  function wrapMathRows(doc, math, available) {
+    const row = math.firstElementChild && math.firstElementChild.localName === "mrow" ? math.firstElementChild : null;
+    if (!row || row.children.length < 3) return false;
+    const atoms = [...row.children].map((node) => ({ node, width: node.getBoundingClientRect().width }));
+    // An atom wider than the column cannot be helped by breaking around it.
+    if (atoms.some((atom) => atom.width > available)) return false;
+    const lines = [];
+    let line = [];
+    let width = 0;
+    for (const atom of atoms) {
+      const breakable = line.length && MATH_BREAK_AFTER.has(line[line.length - 1].node.textContent.trim());
+      if (line.length && width + atom.width > available && breakable) {
+        lines.push(line);
+        line = [];
+        width = 0;
+      }
+      line.push(atom);
+      width += atom.width;
+    }
+    if (line.length) lines.push(line);
+    if (lines.length < 2) return false;
+    const table = doc.createElementNS(MATH_NS, "mtable");
+    for (const entry of lines) {
+      const tr = doc.createElementNS(MATH_NS, "mtr");
+      const td = doc.createElementNS(MATH_NS, "mtd");
+      td.setAttribute("columnalign", "left");
+      const inner = doc.createElementNS(MATH_NS, "mrow");
+      for (const atom of entry) inner.appendChild(atom.node);
+      td.appendChild(inner);
+      tr.appendChild(td);
+      table.appendChild(tr);
+    }
+    row.replaceWith(table);
+    return true;
+  }
+
+  /** Fit every display equation in a rendered document to its column.
+   *
+   * Used by the workspace preview (which is also what the print/PDF path
+   * prints), so a wide derivation wraps instead of running into the margin. It
+   * lives here rather than in the workspace because it is document behaviour,
+   * not UI behaviour, and because a test can call it on a plain DOM.
+   */
+  function fitDisplayMathBlocks(doc, options = {}) {
+    const stats = { checked: 0, wrapped: 0, scaled: 0, overflow: 0 };
+    if (!doc || typeof doc.querySelectorAll !== "function") return stats;
+    // A subtree works as well as a document: new nodes need the owning document.
+    const scope = doc.ownerDocument || doc;
+    const floor = Math.max(MATH_ABS_FLOOR, Number(options.floor) || MATH_FIT_FLOOR);
+    for (const block of doc.querySelectorAll(".math")) {
+      block.style.fontSize = ""; // measure the unscaled equation on every pass
+      const math = block.firstElementChild;
+      if (!math || math.localName !== "math") continue;
+      const available = block.clientWidth;
+      if (!available) continue;
+      stats.checked += 1;
+      const width = () => (math.firstElementChild || math).getBoundingClientRect().width;
+      if (width() <= available) continue;
+      if (wrapMathRows(scope, math, available)) stats.wrapped += 1;
+      const needed = width();
+      if (needed <= available) continue;
+      const base = parseFloat((scope.defaultView || window).getComputedStyle(block).fontSize) || 16;
+      const scale = Math.max(floor, Math.min(1, available / needed));
+      if (scale >= 1) continue;
+      block.style.fontSize = `${base * scale}px`;
+      stats.scaled += 1;
+      /* Below the floor means one indivisible atom is wider than the column.
+         The block is marked rather than cropped: the print stylesheet lets it
+         use the full page width instead of the text column. */
+      if (scale <= floor && available / needed < floor) {
+        block.dataset.mathOverflow = "1";
+        stats.overflow += 1;
+      }
+    }
+    return stats;
+  }
+
   /* ------------------------------------------------------------ document model */
 
   function roleLabel(role) {
@@ -1387,7 +1480,7 @@ html[data-keep="off"] .mcq { break-inside: auto; page-break-inside: auto; }
        item. Equal depths are siblings, so only a deeper level is popped. */
     const stack = [{ node: root, depth: 0 }];
     items.forEach((item, index) => {
-      const depth = Math.max(0, Math.min(8, Number(depths[index]) || 0));
+      const depth = globalThis.AILimits ? globalThis.AILimits.listDepth(depths[index]) : Math.max(0, Math.min(8, Number(depths[index]) || 0));
       while (stack.length > 1 && stack[stack.length - 1].depth > depth) stack.pop();
       const top = stack[stack.length - 1];
       if (depth > top.depth) {
@@ -2582,7 +2675,88 @@ ${body}
     }
   }
 
-  async function pngFor(chat, options = {}) {
+  /* ---------------------------------------------------------- PNG pagination */
+
+  /* A4 is 1.414 times taller than it is wide and the poster is 1240 px wide, so
+     one page is about 1753 px of laid-out document. A window that large also
+     keeps every page bitmap far inside the canvas limit (16384 px a side,
+     16 megapixels) even at 2x. */
+  const PNG_PAGE_RATIO = Math.SQRT2;
+  /* The layout's own PAD, reused as the page margin so a paged export and a
+     one-piece poster have the same edge. */
+  const PNG_PAGE_MARGIN = 78;
+
+  /* The bottom of one laid-out node. Text carries line metrics rather than a
+     height, so it is measured from its lines. */
+  function pngNodeBottom(node) {
+    if (node.kind === "text") return node.y + (node.lines ? node.lines.length : 1) * node.lineHeight;
+    if (node.kind === "chip" || node.kind === "bullet") return node.y + 24;
+    if (node.kind === "rule") return node.y + 2;
+    return node.y + (node.h || 0);
+  }
+
+  /* Split a laid-out document into page windows.
+
+     A break is only ever taken between two nodes, so a table row, an equation,
+     a figure or a code block is never cut in half. Two things can still go
+     wrong and both are handled without cropping: an element taller than the
+     printable area gets a page of its own at its natural height, and a run of
+     content never ends in a near-empty page - the break has to fall past 55% of
+     the page to be worth taking. */
+  function pngPagePlan(layout, pageHeight) {
+    const { nodes, height } = layout;
+    const margin = PNG_PAGE_MARGIN;
+    const usable = pageHeight - margin * 2;
+    if (height <= pageHeight) return [{ top: 0, height, margin: 0 }];
+    const tops = [...new Set(nodes.map((node) => node.y))].sort((a, b) => a - b);
+    const bottomAt = (top) => nodes.reduce((bottom, node) =>
+      (node.y === top ? Math.max(bottom, pngNodeBottom(node)) : bottom), top);
+    const plan = [];
+    let top = 0;
+    let guard = 0;
+    while (top < height - 1 && guard < 500) {
+      guard += 1;
+      const limit = top + usable;
+      const atTop = bottomAt(top);
+      if (atTop > limit) {
+        // One element is taller than a page: give it the page it needs.
+        plan.push({ top, height: atTop - top + margin * 2, margin });
+        top = atTop;
+        continue;
+      }
+      let best = null;
+      for (const candidate of tops) {
+        if (candidate <= top + 1) continue;
+        if (candidate > limit) break;
+        if (candidate >= top + usable * 0.55) best = candidate;
+      }
+      if (best == null && atTop > top + 1) best = atTop;
+      if (best == null) {
+        plan.push({ top, height: height - top + margin * 2, margin });
+        break;
+      }
+      plan.push({ top, height: best - top + margin * 2, margin });
+      top = best;
+    }
+    /* A tail of a few lines does not deserve a page of its own: fold a sliver
+       into the page before it, provided that page stays within 10% of the page
+       height. The window simply grows to cover the content; nothing moves. */
+    for (let index = plan.length - 1; index > 0; index -= 1) {
+      const page = plan[index];
+      const content = page.height - margin * 2;
+      if (content >= usable * 0.35) break;
+      const previous = plan[index - 1];
+      if (previous.height + content > pageHeight * 1.1) break;
+      previous.height += content;
+      plan.splice(index, 1);
+    }
+    return plan.length ? plan : [{ top: 0, height, margin: 0 }];
+  }
+
+  /* Every page of a PNG export. One page means the poster the format has always
+     produced; more than one means the same document split at element
+     boundaries, each page carrying the same margins and typography. */
+  async function pngPagesFor(chat, options = {}) {
     if (typeof document === "undefined") throw new Error("PNG export needs a browser document.");
     const measure = document.createElement("canvas").getContext("2d");
     if (!measure) throw new Error("Canvas rendering is unavailable. Use PDF, Word (.docx) or Markdown instead.");
@@ -2593,50 +2767,65 @@ ${body}
     const requested = options.imageQuality === "high" ? 2 : 1.5;
     const MAX_SIDE = 16384;
     const MAX_PIXELS = 16 * 1024 * 1024;
-    const dimensions = (value) => ({
-      width: Math.round(layout.width * value),
-      height: Math.round(layout.height * value)
-    });
-    const fits = (value) => {
-      const { width, height } = dimensions(value);
+    const plan = pngPagePlan(layout, Math.round(layout.width * PNG_PAGE_RATIO));
+    const fits = (value) => plan.every((page) => {
+      const width = Math.round(layout.width * value);
+      const height = Math.round(page.height * value);
       return width <= MAX_SIDE && height <= MAX_SIDE && width * height <= MAX_PIXELS;
-    };
-    /* A tall conversation can exceed the canvas limit. Reduce the raster scale
-       before failing, and say so: a lower-detail poster is a usable file, while
-       a silently cropped one is not. */
+    });
+    /* A page can still be oversized at the requested detail - a very tall table
+       on its own page, for instance. Lower the scale and let the caller report
+       it rather than handing back a cropped file. */
     const scale = [requested, 1.5, 1.25, 1, 0.75, 0.5, 0.35].find((value) => value <= requested && fits(value));
     if (!scale) {
-      const { width, height } = dimensions(requested);
+      const tallest = plan.reduce((tall, page) => Math.max(tall, page.height), 0);
       throw new Error(
-        `This selection is too large for one PNG even at low detail (${width} x ${height} px at ${requested}x; ` +
-        "the canvas limit is 16384 px per side and 16 megapixels). Select fewer messages, or export PDF, Word (.docx) or Markdown instead."
+        `These pages are too large to rasterise (${Math.round(layout.width * requested)} x ${Math.round(tallest * requested)} px at ` +
+        `${requested}x; the canvas limit is 16384 px per side and 16 megapixels). Select fewer messages, or export PDF, Word (.docx) or Markdown instead.`
       );
     }
-    const { width, height } = dimensions(scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas rendering is unavailable. Use PDF or Markdown instead.");
-    try {
-      ctx.scale(scale, scale);
-      paintPng(ctx, layout);
-      const raster = await new Promise((resolve, reject) => {
-        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not render the image. Try PDF or a smaller selection.")), "image/png");
-      });
-      // Record the real physical resolution for page layout software.
-      const blob = await pngWithDpi(raster, Math.round(96 * scale));
-      // The caller reports a reduced scale instead of pretending the requested
-      // detail was produced.
-      blob.exportScale = scale;
-      blob.requestedScale = requested;
-      blob.pixelWidth = width;
-      blob.pixelHeight = height;
-      return blob;
-    } finally {
-      canvas.width = 0;
-      canvas.height = 0;
+    const pages = [];
+    for (const [index, page] of plan.entries()) {
+      const width = Math.round(layout.width * scale);
+      const height = Math.round(page.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas rendering is unavailable. Use PDF or Markdown instead.");
+      try {
+        ctx.scale(scale, scale);
+        /* Each page frames its own slice: the content that belongs to it starts
+           one margin below the top, exactly as on the first page. */
+        ctx.translate(0, page.margin - page.top);
+        paintPng(ctx, layout);
+        const raster = await new Promise((resolve, reject) => {
+          canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not render the image. Try PDF or a smaller selection.")), "image/png");
+        });
+        // Record the real physical resolution for page layout software.
+        const blob = await pngWithDpi(raster, Math.round(96 * scale));
+        blob.exportScale = scale;
+        blob.requestedScale = requested;
+        blob.pixelWidth = width;
+        blob.pixelHeight = height;
+        blob.pageIndex = index + 1;
+        pages.push({ blob, index: index + 1, width, height });
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
     }
+    return { pages, scale, requested, single: pages.length === 1, width: Math.round(layout.width * scale) };
+  }
+
+  async function pngFor(chat, options = {}) {
+    const result = await pngPagesFor(chat, options);
+    const [first] = result.pages;
+    // The single-page contract stays intact for every existing caller; the extra
+    // fields say when the document needed more than one file.
+    first.blob.pageCount = result.pages.length;
+    first.blob.pageBlobs = result.pages.map((page) => page.blob);
+    return first.blob;
   }
 
   /* --------------------------------------------------------------- validation */
@@ -2675,9 +2864,12 @@ ${body}
           case "list": {
             const items = modelList(raw.items);
             const out = { ...raw, type, ordered: Boolean(raw.ordered), items };
-            if (Array.isArray(raw.depths) && raw.depths.length === items.length) {
-              out.depths = raw.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)));
-            }
+            const depths = globalThis.AILimits
+              ? globalThis.AILimits.listDepths(raw.depths, items.length)
+              : (Array.isArray(raw.depths) && raw.depths.length === items.length
+                ? raw.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)))
+                : null);
+            if (depths) out.depths = depths;
             if (Array.isArray(raw.orders) && raw.orders.length === items.length) {
               out.orders = raw.orders.map((ordered) => Boolean(ordered));
             }
@@ -2946,14 +3138,29 @@ ${body}
         return { filename: `${name}.docx`, mime: generator.MIME, blob: new Blob([bytes], { type: generator.MIME }), bytes, warnings };
       }
       case "image": {
-        const blob = await pngFor(chat, options);
+        /* A long conversation becomes several page files instead of one poster
+           squeezed until it fits the canvas. Each page keeps the document's own
+           typography and margins; the caller downloads them in order. */
+        const rendered = await pngPagesFor(chat, options);
+        const blob = rendered.pages[0].blob;
         if (blob.exportScale && blob.requestedScale && blob.exportScale < blob.requestedScale) {
           warnings.push({
             asset: "PNG",
             reason: `Rendered at ${blob.exportScale}x (${blob.pixelWidth} \u00d7 ${blob.pixelHeight} px) instead of ${blob.requestedScale}x so the image stays inside the canvas limit.`
           });
         }
-        return { filename: `${name}.png`, mime: "image/png", blob, warnings };
+        const files = rendered.pages.map((page) => ({
+          blob: page.blob,
+          filename: `${name}-${String(page.index).padStart(2, "0")}.png`
+        }));
+        return {
+          filename: files[0].filename,
+          mime: "image/png",
+          blob,
+          files,
+          pageCount: files.length,
+          warnings
+        };
       }
       default:
         throw new Error(`Unsupported export format: ${format}`);
@@ -2987,7 +3194,9 @@ ${body}
     textFor,
     jsonFor,
     validateChat,
+    fitDisplayMathBlocks,
     pngFor,
+    pngPagesFor,
     sectionsFor,
     formatDate,
     formatTime,

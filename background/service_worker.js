@@ -1,4 +1,7 @@
 /** AI Exporter - validate local export requests and open isolated preview tabs. */
+// The document model's numeric limits, shared with the renderer and the Word
+// writer so a nested list cannot change depth on the way through the handoff.
+importScripts("utils/limits.js");
 const contextMenuId = "ai-exporter-export-chat";
 const SUPPORTED_PATTERNS = [
   "https://*.chatgpt.com/*", "https://chat.openai.com/*", "https://*.claude.ai/*",
@@ -42,7 +45,9 @@ function sanitizeBlocks(blocks) {
         // Nesting is part of the document: carry it through the handoff or the
         // export tab receives a flat list.
         if (Array.isArray(block.depths) && block.depths.length === list.items.length) {
-          list.depths = block.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)));
+          list.depths = globalThis.AILimits
+            ? globalThis.AILimits.listDepths(block.depths, list.items.length)
+            : block.depths.map((depth) => Math.max(0, Math.min(8, Math.floor(Number(depth)) || 0)));
         }
         if (Array.isArray(block.orders) && block.orders.length === list.items.length) {
           list.orders = block.orders.map((ordered) => Boolean(ordered));
@@ -96,7 +101,13 @@ function sanitizeChat(chat) {
   const coverage = chat.coverage && typeof chat.coverage === "object"
     ? {
         unreadable: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.unreadable) || 0))),
-        detected: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.detected) || messages.length)))
+        detected: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.detected) || messages.length))),
+        /* How far the thread walk got, so the workspace can say whether this is
+           the whole conversation or only as much as the page would mount. */
+        complete: chat.coverage.complete !== false,
+        limitReached: chat.coverage.limitReached === true,
+        steps: Math.max(0, Math.min(1000, Math.floor(Number(chat.coverage.steps) || 0))),
+        collected: Math.max(0, Math.min(MAX_MESSAGES, Math.floor(Number(chat.coverage.collected) || messages.length)))
       }
     : null;
   const exportedAt = text(chat.exportedAt, 40);

@@ -136,3 +136,83 @@ engine"* asserts `m:nary` for both `\sum_{i=1}^{n} i` and `\int_0^1 x^2\,dx`.
   (they would otherwise open a link); left as is.
 * **Word converts tabs to four spaces.** Deliberate: tab stops depend on the
   document's tab settings, spaces survive every viewer.
+
+---
+
+## Remediation pass — defects found by the v1.0 review
+
+### BUG-6 — A long PNG could only be refused (High)
+
+**Symptom.** A conversation taller than one canvas produced
+"too large for one PNG" and nothing else; the only way to get a file was to
+deselect messages.
+
+**Root cause.** `pngFor()` rendered one canvas and searched a scale ladder for a
+fit. There was no pagination concept in the layout at all.
+
+**Fix.** `pngPagePlan()` splits the laid-out document into A4-proportion windows,
+breaking only between nodes; an element taller than a page gets its own page at
+natural height; a trailing sliver is folded into the page before it.
+`pngPagesFor()` renders each page and `build("image")` returns `files`.
+
+**Regression.** selftest "A long PNG export is split into pages, not squeezed";
+artifact check "PNG pages are separate, complete images" (7 pages, 2480 px wide,
+192 DPI).
+
+### BUG-7 — A wide equation was shrunk, never wrapped (Medium)
+
+**Symptom.** Any expression needing more than a 28% reduction overflowed the
+text column; the earlier comment called this acceptable.
+
+**Root cause.** Fitting had one mechanism (font scaling with a floor) and
+treated every equation as indivisible.
+
+**Fix.** `wrapMathRows()` splits a top-level `mrow` after relations and binary
+operators into `mtable` lines, keeping fractions, roots, matrices and scripts
+whole; scaling is the second step and an indivisible overflow is marked rather
+than clipped.
+
+**Regression.** selftest "A wide equation wraps between terms instead of being
+clipped".
+
+### BUG-8 — An incomplete harvest looked complete (High)
+
+**Symptom.** The thread walk could hit its step cap and the export still
+presented itself as the whole conversation.
+
+**Root cause.** Two copied scroll loops, no step accounting, no completeness
+field, and the handoff sanitizer dropped anything it did not know.
+
+**Fix.** One `walkThread()` with a direction, stall detection and a budget;
+`collectThread()` returns `complete` / `limitReached` / `steps`; the sanitizer
+carries them; the workspace shows the counts and the reason before export.
+
+**Regression.** Covered by the coverage-note path; the walk itself is
+browser-only and has no fixture (stated in `TEST_REPORT.md`).
+
+### BUG-9 — Word had no page numbers, header, footer or sections (Medium)
+
+**Symptom.** A twenty-page .docx had no page numbers and no way to add them.
+
+**Root cause.** `documentXml()` emitted one bare `w:sectPr`; the package had no
+header/footer parts, relationships or content-type overrides.
+
+**Fix.** `chromeSettings()` (numbers on by default, opt-out), `pageField()` (a
+real PAGE field), `headerXml()` / `footerXml()`, `sectPrXml()` shared with
+opt-in per-message section breaks, plus the parts, rels and content types.
+
+**Regression.** selftest "Word carries page numbers, an optional header and
+section breaks"; python-docx reads the field out of the generated file.
+
+### BUG-10 — The list-depth clamp lived in three modules (Low)
+
+**Symptom.** None yet; the risk is a list that flattens on one surface and not
+another.
+
+**Root cause.** The same `0..8` clamp was written by hand in the handoff, the
+renderer and the Word writer.
+
+**Fix.** `utils/limits.js` exports `listDepth` / `listDepths`; all three call the
+shared one (with a local fallback if the module is absent).
+
+**Regression.** `npm run check` (11 scripts) and the existing nested-list checks.

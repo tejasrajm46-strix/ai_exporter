@@ -74,3 +74,34 @@ to the browser platform; none is hidden from the user at export time.
     this pass; the workspace controller was driven inside a DOM harness instead.
 20. No accessibility, Lighthouse or cross-browser audit was performed (Chromium
     only).
+
+---
+
+## After the v1.1 remediation pass
+
+13. **PNG is paginated, and the page size is A4-proportioned** (1240 × 1753
+    layout units). A conversation therefore becomes N files rather than one
+    poster. Every page is downloaded in order; the success card says how many
+    files were produced.
+14. **A single element taller than the canvas limit is still refused.** A
+    6000-line code block is one laid-out node and cannot be split without
+    changing its rendering, so it fails with an explicit reason instead of being
+    cropped. A 400-line block exports normally.
+15. **Mathematics in PNG still uses the plain-text renderer** (`a/b`,
+    `√(x+1)`), because a canvas cannot typeset MathML.
+16. **DOCX cannot wrap a wide equation.** Word has no line-breaking model for
+    `m:oMath`; a single very wide formula runs past the margin. HTML and PDF
+    wrap it at top-level operators instead.
+17. **DOCX page numbering is verified structurally, not visually.** No Word,
+    LibreOffice or pandoc exists on this machine, so the `PAGE` field, footer
+    part, relationship and content type are verified (and read back by
+    `python-docx`), but nobody has watched Word paint the number.
+18. **The thread walk has a step budget** (80 steps, three-stall detection). An
+    extremely long thread can still stop before its first turn; when it does,
+    the workspace now says so, with the message count and the reason, before
+    anything is exported.
+19. **Header and footer text and section breaks are options, not UI controls.**
+    Page numbers are on by default for every Word export; the other two are
+    reachable through the exporter's options (`headerText`, `footerText`,
+    `pageNumberPosition`, `sectionBreaks`) and covered by tests, but the
+    workspace does not yet expose a switch for them.

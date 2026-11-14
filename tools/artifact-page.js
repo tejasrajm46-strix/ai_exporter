@@ -427,6 +427,25 @@
     const push = async (name, format, options = {}, source = chat) => {
       const result = await AIExporter.build(source, format, options);
       const entry = { name, format, mime: result.mime, warnings: result.warnings || [] };
+      /* A paginated PNG arrives as several files; every page is written out so
+         the artifact run can inspect each one. */
+      if (Array.isArray(result.files) && result.files.length > 1) {
+        for (const [index, part] of result.files.entries()) {
+          const pageEntry = {
+            name: index === 0 ? name : name.replace(/\.png$/, `-${String(index + 1).padStart(2, "0")}.png`),
+            format, mime: result.mime, warnings: []
+          };
+          pageEntry.base64 = await base64(part.blob);
+          pageEntry.pixelWidth = part.blob.pixelWidth;
+          pageEntry.pixelHeight = part.blob.pixelHeight;
+          pageEntry.exportScale = part.blob.exportScale;
+          pageEntry.requestedScale = part.blob.requestedScale;
+          pageEntry.pageNumber = index + 1;
+          pageEntry.pageCount = result.files.length;
+          files.push(pageEntry);
+        }
+        return entry;
+      }
       if (result.text != null) entry.text = result.text;
       else if (result.blob) {
         entry.base64 = await base64(result.blob);

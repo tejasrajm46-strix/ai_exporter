@@ -22,7 +22,7 @@
   </video>
 </p>
 
-<p align="center"><sub>60-second walkthrough of the export workspace (mp4, no audio).</sub></p>
+<p align="center"><sub>60-second walkthrough of the export workspace · <a href="./assets/AI_EXPORTER_INTRO.mp4">watch the mp4</a> (no audio, 27 MB)</sub></p>
 
 ---
 

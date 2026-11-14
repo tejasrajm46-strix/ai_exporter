@@ -29,12 +29,12 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/tejasrajm46-strix/ai_exporter/raw/main/assets/AI_EXPORTER_INTRO.mp4" width="100%" controls muted playsinline poster="./assets/screenshots/studio.png">
-    Picking Word as the format, switching the document to dark and exporting from the preview workspace.
-  </video>
+  <a href="./assets/AI_EXPORTER_INTRO.mp4" title="Play the full 60-second walkthrough">
+    <img src="./assets/intro-preview.gif" width="100%" alt="60-second walkthrough: seven formats, four platforms, preview and customise, privacy, then export — ending on the AI Exporter card.">
+  </a>
 </p>
 
-<p align="center"><sub>60-second walkthrough: choose a format, restyle the page, export from the preview · <a href="./assets/AI_EXPORTER_INTRO.mp4">watch the mp4</a> (no audio, 26 MB)</sub></p>
+<p align="center"><sub><b>▶ 60-second walkthrough</b> — the animation above loops; <a href="./assets/AI_EXPORTER_INTRO.mp4">click it for the full-quality mp4</a> (1080p, 26 MB, no narration)</sub></p>
 
 ---
 
@@ -122,6 +122,11 @@ on the next click.
 | **Markdown** | Headings, lists, tables, fenced code, image references | Serialised from the same blocks as the preview. |
 | **TXT** | Reading copy without markup | Plain serialisation. |
 | **PNG** | One poster, or **several A4-proportion pages** for a long conversation | Rendered at 1.5× or 2× detail; pages break only between blocks. |
+
+> **Why the animation and not a player?** GitHub strips `<video>` tags from
+> READMEs and blocks media from any host but its own upload area, so a committed
+> `.mp4` cannot play inline. The README shows a looping GIF cut from the film and
+> links the original beside it.
 | **JSON** | The parsed conversation, structured | Messages, roles, blocks, code and formulas. |
 
 ## How it works

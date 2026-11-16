@@ -1,8 +1,8 @@
 # Generated release archives
 dist/
+RELEASE_*.zip
 
-# Local scratch, browser profiles and generated samples
-.tmp/
+# Dependencies, if tooling is ever added back
 node_modules/
 
 # Local environment and credentials
@@ -14,13 +14,6 @@ node_modules/
 
 # Tool metadata
 .freebuff/
-
-# Generated verification artifacts: rebuild with `npm run artifacts`.
-# The machine-readable result table is kept; the binaries are not committed.
-tests/output/*
-!tests/output/verification.json
-!tests/output/verification.md
-tests/visual/
 
 # OS and editor noise
 .DS_Store

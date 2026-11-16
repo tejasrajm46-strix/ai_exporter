@@ -1,7 +1,10 @@
 /** AI Exporter - validate local export requests and open isolated preview tabs. */
 // The document model's numeric limits, shared with the renderer and the Word
 // writer so a nested list cannot change depth on the way through the handoff.
-importScripts("utils/limits.js");
+// Absolute path: importScripts resolves relative to this worker's URL, so
+// "utils/limits.js" would be requested at /background/utils/limits.js and the
+// whole worker would fail to start.
+importScripts("/utils/limits.js");
 const contextMenuId = "ai-exporter-export-chat";
 const SUPPORTED_PATTERNS = [
   "https://*.chatgpt.com/*", "https://chat.openai.com/*", "https://*.claude.ai/*",
